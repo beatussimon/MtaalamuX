@@ -1,0 +1,54 @@
+{% extends 'core/base.html' %}
+{% block title %}Find Experts{% endblock %}
+{% block content %}
+    <div class="hero-section text-center mb-5">
+        <h1 class="display-4 fw-bold">Find Your Perfect Expert</h1>
+        <p class="lead text-muted">Connect with top professionals across all fields.</p>
+        <form method="get" class="input-group w-50 mx-auto mt-4">
+            <input type="text" name="q" class="form-control rounded-start" placeholder="Search by field, skill, or location..." value="{{ request.GET.q }}">
+            <button type="submit" class="btn btn-primary rounded-end"><i class="fas fa-search"></i> Search</button>
+        </form>
+    </div>
+    <div class="row g-4">
+        {% for pro in professionals %}
+            <div class="col-md-4">
+                <div class="card h-100 shadow-sm hover-shadow">
+                    <img src="{{ pro.photo.url }}" class="card-img-top rounded-top" alt="Profile" style="height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title"><a href="{% url 'professional_detail' pro.id %}" class="text-decoration-none">{{ pro.field }} - {{ pro.subfield }}</a></h5>
+                        <p class="card-text text-muted">{{ pro.bio|truncatewords:15 }}</p>
+                        <p><i class="fas fa-map-marker-alt"></i> {{ pro.location }}</p>
+                        <p><i class="fas fa-star text-warning"></i> {{ pro.average_rating|floatformat:1 }} ({{ pro.reviews.count }})</p>
+                        <p><i class="fas fa-users"></i> {{ pro.follower_count }} Followers</p>
+                        <div class="d-flex gap-2">
+                            {% for badge in pro.badges %}
+                                <span class="badge bg-success">{{ badge }}</span>
+                            {% endfor %}
+                            {% if pro.is_verified %}<span class="badge bg-primary"><i class="fas fa-check"></i> Verified</span>{% endif %}
+                        </div>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <a href="{% url 'professional_detail' pro.id %}" class="btn btn-outline-primary w-100">View Profile</a>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col-12 text-center py-5"><p class="text-muted">No experts found. Try a different search.</p></div>
+        {% endfor %}
+    </div>
+    {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-5">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Messages{% endblock %}
+{% block content %}
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4>Inbox</h4>
+                    <ul class="list-group">
+                        {% for msg in inbox %}
+                            <li class="list-group-item {% if not msg.is_read %}fw-bold{% endif %}">
+                                <a href="{% url 'messages_with' msg.sender.id %}" class="text-decoration-none">{{ msg.sender.username }}: {{ msg.content|truncatewords:10 }}</a>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-muted">No messages</li>
+                        {% endfor %}
+                    </ul>
+                    <h4 class="mt-4">Sent</h4>
+                    <ul class="list-group">
+                        {% for msg in sent %}
+                            <li class="list-group-item">
+                                <a href="{% url 'messages_with' msg.recipient.id %}" class="text-decoration-none">To {{ msg.recipient.username }}: {{ msg.content|truncatewords:10 }}</a>
+                            </li>
+                        {% empty %}
+                            <li class="list-group-item text-muted">No messages</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    {% if messages %}
+                        <h4>Chat with {{ recipient.username }}</h4>
+                        <div id="chat-box" class="chat-box" style="max-height: 400px; overflow-y: auto;">
+                            {% for msg in messages %}
+                                <div class="message {% if msg.sender == user %}text-end{% else %}text-start{% endif %} mb-3">
+                                    <p class="p-2 rounded {% if msg.sender == user %}bg-primary text-white{% else %}bg-light{% endif %} d-inline-block">
+                                        {{ msg.content }}
+                                        {% if msg.file %}<a href="{{ msg.file.url }}" class="text-white"><i class="fas fa-file"></i></a>{% endif %}
+                                    </p>
+                                    <p class="text-muted small">{{ msg.timestamp|timesince }} ago</p>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <form method="post" class="mt-4">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                {{ form|crispy }}
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+                            </div>
+                        </form>
+                    {% else %}
+                        <p class="text-muted text-center py-5">Select a conversation to start chatting.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

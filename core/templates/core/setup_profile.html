@@ -1,0 +1,13 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+{% block title %}Setup Profile{% endblock %}
+{% block content %}
+    <div class="card shadow-sm p-4 mx-auto" style="max-width: 600px;">
+        <h1 class="display-6 fw-bold">{% if is_professional %}Professional Profile{% else %}User Profile{% endif %}</h1>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save"></i> Save</button>
+        </form>
+    </div>
+{% endblock %}

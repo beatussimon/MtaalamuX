@@ -1,0 +1,12 @@
+{% extends 'core/base.html' %}
+{% block title %}Become a Professional{% endblock %}
+{% block content %}
+    <div class="card shadow-sm p-4 text-center mx-auto" style="max-width: 500px;">
+        <h1 class="display-6 fw-bold">Join as a Professional</h1>
+        <p class="lead">Share your expertise and connect with clients worldwide.</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-briefcase"></i> Become a Professional</button>
+        </form>
+    </div>
+{% endblock %}

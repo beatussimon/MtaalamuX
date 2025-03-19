@@ -1,0 +1,289 @@
+/* CSS Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Color Variables */
+:root {
+    --primary: #007bff;
+    --primary-dark: #0056b3;
+    --secondary: #00c4cc;
+    --secondary-dark: #009b9f;
+    --background-light: #f4f7fa;
+    --background-dark: #1a1a2e;
+    --text-light: #333;
+    --text-dark: #e0e0e0;
+    --card-light: #fff;
+    --card-dark: #2c3034;
+    --muted-light: #6c757d;
+    --muted-dark: #adb5bd;
+    --navbar-dark: #343a40;
+    --navbar-dark-gradient: #495057;
+}
+
+/* General Styles */
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--background-light);
+    color: var(--text-light);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.bg-gradient {
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    background: -webkit-linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.navbar {
+    padding: 1rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: var(--navbar-dark);
+}
+
+.navbar.bg-gradient {
+    background: linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
+    background: -webkit-linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
+}
+
+.navbar-brand {
+    font-size: 1.8rem;
+    color: #ffffff;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: #ffffff;
+}
+
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    background-color: var(--card-light);
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.hover-shadow:hover {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    background: -webkit-linear-gradient(90deg, var(--primary), var(--secondary));
+    border: none;
+    border-radius: 25px;
+    padding: 0.75rem 1.5rem;
+    transition: background 0.3s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
+    background: -webkit-linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
+}
+
+.hero-section {
+    padding: 4rem 0;
+    background: linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
+    background: -webkit-linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
+    border-radius: 20px;
+}
+
+.chat-box {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) transparent;
+}
+
+.chat-box::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-box::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 4px;
+}
+
+footer {
+    background: linear-gradient(90deg, var(--background-dark), #16213e);
+    background: -webkit-linear-gradient(90deg, var(--background-dark), #16213e);
+}
+
+/* Article Detail Page Styling */
+.article-hero {
+    margin-top: -20px; /* Adjust for navbar overlap */
+}
+
+.article-hero-overlay {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    background: -webkit-linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.article-content {
+    line-height: 1.8;
+}
+
+.article-body p {
+    font-size: 1.1rem;
+    color: var(--text-light);
+}
+
+.article-stats span {
+    font-size: 0.9rem;
+}
+
+.btn-action {
+    transition: all 0.3s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.comments-section .comment {
+    transition: background-color 0.3s ease;
+}
+
+.comments-section .comment:hover {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.input-group .form-control.rounded-pill {
+    border-right: none;
+}
+
+.input-group .btn.rounded-pill {
+    border-left: none;
+}
+
+.related-article:hover h6 a {
+    color: var(--primary);
+}
+
+.floating-action-bar {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--card-light);
+    padding: 10px 15px;
+    border-radius: 50px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+}
+
+.floating-action-bar .btn {
+    font-size: 0.9rem;
+}
+
+/* Professional Detail Page Styling */
+.professional-hero {
+    margin-top: -20px; /* Adjust for navbar overlap */
+}
+
+.professional-hero-overlay {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+    background: -webkit-linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.review {
+    transition: background-color 0.3s ease;
+}
+
+.review:hover {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.portfolio-item img {
+    transition: transform 0.3s ease;
+}
+
+.portfolio-item img:hover {
+    transform: scale(1.05);
+}
+
+/* Dark Mode Styles */
+.dark-mode {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+}
+
+.dark-mode .card {
+    background-color: var(--card-dark);
+}
+
+.dark-mode .text-dark,
+.dark-mode .card-title,
+.dark-mode h6 a {
+    color: var(--text-dark);
+}
+
+.dark-mode .text-muted {
+    color: var(--muted-dark);
+}
+
+.dark-mode .article-content {
+    background-color: var(--card-dark);
+    color: var(--text-dark);
+}
+
+.dark-mode .article-body p {
+    color: var(--text-dark);
+}
+
+.dark-mode .article-stats span {
+    color: var(--muted-dark);
+}
+
+.dark-mode .comments-section .comment:hover,
+.dark-mode .review:hover {
+    background-color: #3a3f44;
+}
+
+.dark-mode .floating-action-bar {
+    background-color: var(--card-dark);
+}
+
+
+
+/* Additional Professional Detail Page Styling */
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.badge.bg-primary {
+    background-color: var(--primary) !important;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+.badge.bg-success {
+    background-color: #28a745 !important;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+/* Dark Mode Adjustments */
+.dark-mode .badge.bg-primary {
+    background-color: var(--primary) !important;
+}
+
+.dark-mode .badge.bg-success {
+    background-color: #28a745 !important;
+}
