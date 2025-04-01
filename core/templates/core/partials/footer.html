@@ -1,0 +1,46 @@
+{% load static %}
+{% now "Y" as current_year %}
+
+<footer id="main-footer" class="bg-dark text-white py-2 mt-auto">
+     <div class="container">
+         <div class="row g-2 justify-content-center align-items-start">
+             <div class="col-12 col-md-4 text-center text-md-start mb-2 mb-md-0">
+                 <h6 class="fw-bold text-uppercase mb-1">mtaalamuX</h6>
+                 <p class="small text-white-50 mb-0 lh-sm">
+                     Connecting professionals & opportunities.
+                 </p>
+             </div>
+             <div class="col-sm-6 col-md-4 text-center text-md-start mb-2 mb-md-0">
+                 <h6 class="fw-bold text-uppercase mb-1">Quick Links</h6>
+                 <ul class="list-unstyled small mb-0 lh-sm">
+                    <li><a href="{% url 'core:home' %}" class="text-white-50 footer-link">Home</a></li>
+                    <li><a href="{% url 'core:professional_list' %}" class="text-white-50 footer-link">Experts</a></li>
+                    <li><a href="{% url 'core:job_list' %}" class="text-white-50 footer-link">Jobs</a></li>
+                    <li><a href="{% url 'core:faq' %}" class="text-white-50 footer-link">FAQs</a></li>
+                 </ul>
+             </div>
+             <div class="col-sm-6 col-md-4 text-center text-md-start">
+                  <h6 class="fw-bold text-uppercase mb-1">Contact Us</h6>
+                  <address class="small text-white-50 fst-normal mb-0 lh-sm">
+                      <i class="fas fa-envelope fa-fw me-1 opacity-75"></i><a href="mailto:support@mtaalamux.com" class="text-white-50 footer-link">support@mtaalamux.com</a><br>
+                      <i class="fas fa-phone fa-fw me-1 opacity-75"></i>+123-456-7890
+                  </address>
+              </div>
+         </div>
+         <hr class="my-2" style="border-top: 1px solid rgba(255, 255, 255, 0.1);">
+         <div class="row g-1 align-items-center">
+             <div class="col-md text-center text-md-start mb-1 mb-md-0">
+                  <p class="small text-white-50 mb-0">
+                      &copy; {{ current_year }} mtaalamuX. TZ.
+                  </p>
+             </div>
+              <div class="col-md-auto text-center text-md-end">
+                  <div class="social-links">
+                      <a href="#" class="text-white-50 footer-link me-2" title="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                      <a href="#" class="text-white-50 footer-link me-2" title="Twitter"><i class="fab fa-twitter"></i></a>
+                      <a href="#" class="text-white-50 footer-link" title="GitHub"><i class="fab fa-github"></i></a>
+                  </div>
+              </div>
+         </div>
+     </div>
+ </footer>

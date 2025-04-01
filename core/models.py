@@ -18,9 +18,31 @@ class UserProfile(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    # Add the image field - allow it to be blank/null for fallback
+    image = models.ImageField(
+        upload_to='category_images/', # Store images in MEDIA_ROOT/category_images/
+        blank=True,
+        null=True,
+        help_text="Optional: Image representing this category (e.g., an icon)."
+    )
 
     def __str__(self):
         return self.name
+
+    # Optional helper method for initials
+    def get_initials(self):
+        if self.name:
+            # Simple first letter initial
+            # return self.name[0].upper()
+            # --- OR ---
+            # Initials from first 1 or 2 words (e.g., "SD" for "Software Development")
+            parts = self.name.split()
+            if len(parts) > 1:
+                return (parts[0][0] + parts[1][0]).upper()
+            elif parts:
+                return parts[0][0].upper()
+        return "?" # Fallback if name is empty
+
 
 
 class Professional(models.Model):
@@ -30,6 +52,7 @@ class Professional(models.Model):
     location = models.CharField(max_length=100)
     skills = models.JSONField(default=list)
     photo = models.ImageField(upload_to='professionals/', blank=True, null=True)
+    hero_image = models.ImageField(upload_to='hero_images/', blank=True, null=True)
     bio = models.TextField(blank=True)
     is_verified = models.BooleanField(default=False)
     followers = models.ManyToManyField(User, related_name='following', blank=True)

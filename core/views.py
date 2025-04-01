@@ -24,68 +24,42 @@ class ProfessionalListView(ListView):
     context_object_name = 'professionals'
     paginate_by = 12
 
+    # --- get_queryset remains the same as your last working version ---
     def get_queryset(self):
+        # (Keep the combined search logic from the previous "perfect search" answer)
         queryset = Professional.objects.filter(is_verified=True)
         query = self.request.GET.get('q')
-        category_name = self.request.GET.get('category') # Get category name from GET param
-
-        # --- Apply DB-level filters first ---
+        category_name = self.request.GET.get('category')
         if category_name:
-             # Filter based on the Category's name through the foreign key
             queryset = queryset.filter(field__name__iexact=category_name)
-
         if query:
-            # Basic field/subfield/location search (using Category name for field search)
-            base_query_filter = Q(field__name__icontains=query) | Q(subfield__icontains=query) | Q(location__icontains=query)
-            queryset = queryset.filter(base_query_filter)
-            # Note: Skills filtering will happen AFTER annotation and fetching below
-
-        # --- Annotate the queryset ---
+            field_q = Q(field__name__icontains=query)
+            subfield_q = Q(subfield__icontains=query)
+            location_q = Q(location__icontains=query)
+            skills_q = Q(skills__icontains=query) # Basic skills search
+            combined_q = field_q | subfield_q | location_q | skills_q
+            queryset = queryset.filter(combined_q).distinct()
         queryset = queryset.annotate(
-            # Annotate follower count
             follower_count_annotated=Count('followers', distinct=True),
-            # Annotate average rating BY CALCULATING IT from related reviews
-            avg_rating_annotated=Coalesce(
-                Avg('reviews__rating'),     # Calculate Avg of the 'rating' field on related 'reviews'
-                Value(0.0),                 # If Avg returns None (no reviews), default to 0.0
-                output_field=FloatField()   # Specify the output field type
-            )
+            avg_rating_annotated=Coalesce(Avg('reviews__rating'), Value(0.0), output_field=FloatField())
         )
+        professionals_list = list(queryset)
+        for p in professionals_list:
+            p._sort_score = (0.7 * p.follower_count_annotated) + (0.3 * p.avg_rating_annotated * 100)
+        return sorted(professionals_list, key=lambda x: getattr(x, '_sort_score', 0), reverse=True)
 
-        # --- Fetch annotated objects into a list ---
-        professionals_list = list(queryset) # Execute the query
-
-        # --- Python-level filtering for skills (if query exists) ---
-        if query:
-             professionals_list = [
-                 professional for professional in professionals_list
-                 if hasattr(professional, 'skills') and isinstance(professional.skills, (list, tuple))
-                 and any(query.lower() in str(skill).lower() for skill in professional.skills)
-             ]
-
-        # --- Calculate sort score in Python and sort ---
-        for professional in professionals_list:
-            follower_count = professional.follower_count_annotated
-            avg_rating = professional.avg_rating_annotated
-
-            professional._sort_score = (0.7 * follower_count) + (0.3 * avg_rating * 100)
-
-        # Sort the list by the temporary score
-        return sorted(professionals_list, key=lambda x: x._sort_score, reverse=True)
-
-    # --- get_context_data requires Category model for context ---
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Get distinct category *names* for the filter dropdown
+
+        # --- Pass full Category objects to the template ---
         context['categories'] = Category.objects.filter(
-            professionals__is_verified=True # Only show categories with verified professionals
-        ).distinct().values_list('name', flat=True).order_by('name')
+            professionals__is_verified=True # Only show relevant categories
+        ).distinct().order_by('name') # Pass category objects
 
         # Manual pagination (needed because get_queryset returns a list)
-        professionals_sorted = self.object_list # Get the sorted list from get_queryset
+        professionals_sorted = self.object_list
         page = self.request.GET.get('page', 1)
         paginator = Paginator(professionals_sorted, self.paginate_by)
-
         try:
             professionals_paginated = paginator.page(page)
         except PageNotAnInteger:
@@ -93,18 +67,16 @@ class ProfessionalListView(ListView):
         except EmptyPage:
             professionals_paginated = paginator.page(paginator.num_pages)
 
-        # Override context['professionals'] with the paginated list
         context['professionals'] = professionals_paginated
         context['paginator'] = paginator
         context['is_paginated'] = paginator.num_pages > 1
         context['page_obj'] = professionals_paginated
-        # Use the category name for context
+
+        # Keep selected_category as the NAME string for comparison with URL param
         context['selected_category'] = self.request.GET.get('category', '')
         context['query'] = self.request.GET.get('q', '')
         return context
 
-
-# In core/views.py
 
 class ProfessionalDetailView(DetailView):
     model = Professional
@@ -237,24 +209,58 @@ def dashboard(request):
 @login_required
 def setup_profile(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
+
+    # Try to get the existing professional profile FOR THIS USER, if one exists
+    try:
+        existing_professional = Professional.objects.get(user=request.user)
+    except Professional.DoesNotExist:
+        existing_professional = None # No existing professional record found
+
     if request.method == 'POST':
         if profile.is_professional:
-            form = ProfessionalForm(request.POST, request.FILES)
+            # User is marked as professional. Handle update or creation of Professional model.
+            if existing_professional:
+                # UPDATE: Pass the existing instance to the form
+                form = ProfessionalForm(request.POST, request.FILES, instance=existing_professional)
+                log_action = "Updated professional profile"
+            else:
+                # CREATE: No existing instance found, create a new form
+                # (This might happen if UserProfile.is_professional was set true elsewhere)
+                form = ProfessionalForm(request.POST, request.FILES)
+                log_action = "Created professional profile via setup"
+
             if form.is_valid():
-                professional = form.save(commit=False)
-                professional.user = request.user
-                professional.skills = form.cleaned_data['skills']
-                professional.save()
-                ActivityLog.objects.create(user=request.user, action="Updated professional profile")
+                professional = form.save(commit=False) # Get instance, don't save yet
+                professional.user = request.user     # Ensure user is set
+                # Safely handle skills if the field exists in the form
+                if 'skills' in form.cleaned_data:
+                   professional.skills = form.cleaned_data['skills']
+                professional.save()                 # Save the new or updated instance
+                ActivityLog.objects.create(user=request.user, action=log_action)
                 return redirect('core:dashboard')
-        else:
+            # If form is not valid, it will fall through and render below with errors
+
+        else: # User is NOT marked as professional
+            # Update the UserProfile model instance
             form = UserProfileForm(request.POST, request.FILES, instance=profile)
             if form.is_valid():
                 form.save()
                 ActivityLog.objects.create(user=request.user, action="Updated user profile")
                 return redirect('core:dashboard')
-    else:
-        form = ProfessionalForm() if profile.is_professional else UserProfileForm(instance=profile)
+            # If form is not valid, it will fall through and render below with errors
+
+    else: # GET Request
+        if profile.is_professional:
+            if existing_professional:
+                # Show form pre-filled with existing professional data
+                form = ProfessionalForm(instance=existing_professional)
+            else:
+                 # Show blank professional form (if profile.is_professional is true but no record exists)
+                 form = ProfessionalForm()
+        else:
+            # Show form pre-filled with UserProfile data
+            form = UserProfileForm(instance=profile)
+
     return render(request, 'core/setup_profile.html', {'form': form, 'is_professional': profile.is_professional})
 
 @login_required
@@ -427,6 +433,9 @@ def user_profile(request):
             if professional_form:
                 professional = professional_form.save(commit=False)
                 professional.user = user
+                # Handle skills manually since we’re using a custom input
+                if 'skills' in request.POST:
+                    professional.skills = [skill.strip() for skill in request.POST['skills'].split(',') if skill.strip()]
                 professional.save()
 
             return redirect('core:user_profile')

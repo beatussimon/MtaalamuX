@@ -2,35 +2,36 @@
 {% load static %}
 {% block title %}{{ professional.field }} - {{ professional.subfield }}{% endblock %}
 {% block content %}
-    <!-- Hero Section with Professional Photo -->
-    <div class="professional-hero position-relative mb-5">
-        {% if professional.photo %}
-            <img src="{{ professional.photo.url }}" class="img-fluid rounded w-100" alt="{{ professional.user.username }}'s profile photo" style="max-height: 500px; object-fit: cover;">
-        {% else %}
-            <img src="{% static 'img/default_profile.jpg' %}" class="img-fluid rounded w-100" alt="Default profile photo" style="max-height: 500px; object-fit: cover;">
-        {% endif %}
-        <div class="professional-hero-overlay position-absolute bottom-0 start-0 w-100 p-4">
-            <h1 class="display-4 fw-bold text-white mb-2">{{ professional.field }} - {{ professional.subfield }}</h1>
-            <p class="text-white mb-0">
-                <i class="fas fa-map-marker-alt me-1"></i> {{ professional.location }}
-            </p>
-        </div>
+
+  <!-- Hero Section with Separate Hero Image -->
+<div class="professional-hero position-relative mb-5">
+    {% if professional.hero_image %}
+        <img src="{{ professional.hero_image.url }}" class="img-fluid rounded w-100" alt="{{ professional.user.username }}'s hero image" style="max-height: 500px; object-fit: cover;">
+    {% else %}
+        <img src="{% static 'img/default_hero.jpg' %}" class="img-fluid rounded w-100" alt="Default hero image" style="max-height: 500px; object-fit: cover;">
+    {% endif %}
+    <div class="professional-hero-overlay position-absolute bottom-0 start-0 w-100 p-4 text-white" style="background: rgba(0, 0, 0, 0.5);">
+        <h1 class="display-4 fw-bold mb-2">{{ professional.field }} - {{ professional.subfield }}</h1>
+        <p class="mb-0">
+            <i class="fas fa-map-marker-alt me-1"></i> {{ professional.location|default:"Location not specified" }}
+        </p>
     </div>
+</div>
 
     <!-- Main Content -->
     <div class="container">
         <div class="row g-5">
             <!-- Sidebar -->
-            <div class="col-lg-4">
+            <div class="col-12 col-lg-4">
                 <div class="sticky-top" style="top: 20px;">
                     <div class="card shadow-sm mb-4">
                         <div class="card-body text-center">
                             <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 150px; height: 150px; object-fit: cover;">
                             <h3 class="card-title">{{ professional.user.username }}</h3>
                             <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
-                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1 }} ({{ professional.reviews.count }})</p>
-                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count }} Followers</p>
-                            <p><i class="fas fa-file-alt me-1"></i> {{ professional.post_count }} Posts</p>
+                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1|default:"N/A" }} ({{ professional.reviews.count|default:0 }})</p>
+                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count|default:0 }} Followers</p>
+                            <p><i class="fas fa-file-alt me-1"></i> {{ professional.post_count|default:0 }} Posts</p>
                             <div class="d-flex flex-wrap gap-2 justify-content-center mb-3">
                                 {% for badge in badges %}
                                     <span class="badge {% if badge.tier == 'verified_user' %}bg-info{% elif badge.tier == 'verified_professional' %}bg-success{% elif badge.tier == 'premium_user' %}bg-warning{% else %}bg-primary{% endif %}">{{ badge.get_tier_display }}</span>
@@ -62,12 +63,12 @@
             </div>
 
             <!-- Main Content -->
-            <div class="col-lg-8">
+            <div class="col-12 col-lg-8">
                 <!-- Bio -->
                 <div class="card shadow-sm mb-4">
                     <div class="card-body">
                         <h4 class="card-title fw-bold">About</h4>
-                        <p class="text-dark">{{ professional.bio|linebreaks }}</p>
+                        <p class="text-dark">{{ professional.bio|linebreaks|default:"No bio provided." }}</p>
                     </div>
                 </div>
 
@@ -91,8 +92,8 @@
                         <h4 class="card-title fw-bold">Portfolio</h4>
                         {% for item in portfolio_items %}
                             <div class="portfolio-item mb-3">
-                                <h5 class="mb-1">{{ item.title }}</h5>
-                                <p class="text-muted">{{ item.description|truncatewords:20 }}</p>
+                                <h5 class="mb-1">{{ item.title|default:"Untitled" }}</h5>
+                                <p class="text-muted">{{ item.description|truncatewords:20|default:"No description available." }}</p>
                                 {% if item.image %}
                                     <img src="{{ item.image.url }}" class="img-fluid rounded mb-2" alt="Portfolio item: {{ item.title }}" style="max-height: 200px; object-fit: cover;">
                                 {% endif %}
@@ -116,7 +117,7 @@
                                 {% endif %}
                                 <div>
                                     <h6 class="mb-1"><a href="{% url 'core:article_detail' article.id %}" class="text-dark text-decoration-none">{{ article.title|truncatewords:10 }}</a></h6>
-                                    <p class="text-muted small">{{ article.publish_date|date:"F d, Y" }}</p>
+                                    <p class="text-muted small">{{ article.publish_date|date:"F d, Y"|default:"Date not available" }}</p>
                                 </div>
                             </div>
                         {% empty %}
@@ -128,7 +129,7 @@
                 <!-- Reviews -->
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        <h4 class="card-title fw-bold">Reviews ({{ reviews.count }})</h4>
+                        <h4 class="card-title fw-bold">Reviews ({{ reviews.count|default:0 }})</h4>
                         {% for review in reviews %}
                             <div class="review d-flex gap-3 mb-4">
                                 <img src="{% if review.reviewer.userprofile %}{{ review.reviewer.userprofile.avatar.url|default_if_none:'/static/img/default_avatar.jpg' }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ review.reviewer.username }}'s avatar" style="width: 40px; height: 40px; object-fit: cover;">
@@ -139,9 +140,9 @@
                                         {% else %}
                                             <span class="text-dark fw-bold">{{ review.reviewer.username }}</span>
                                         {% endif %}
-                                        <span class="text-muted small ms-2">{{ review.created_at|timesince }} ago</span>
+                                        <span class="text-muted small ms-2">{{ review.created_at|timesince|default:"Time not available" }} ago</span>
                                     </p>
-                                    <p><i class="fas fa-star text-warning me-1"></i> {{ review.rating }} - {{ review.comment }}</p>
+                                    <p><i class="fas fa-star text-warning me-1"></i> {{ review.rating|default:"N/A" }} - {{ review.comment|default:"No comment provided." }}</p>
                                 </div>
                             </div>
                         {% empty %}

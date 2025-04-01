@@ -1,12 +1,11 @@
 from django import forms
+from django.core.validators import FileExtensionValidator
 from .models import Professional, PortfolioItem, Message, Article, ServiceReview, UserProfile, Job, Category
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ['bio', 'avatar', 'interests', 'theme']
-
-from django.core.validators import FileExtensionValidator
 
 class ProfessionalForm(forms.ModelForm):
     skills = forms.CharField(
@@ -27,11 +26,16 @@ class ProfessionalForm(forms.ModelForm):
         validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
         required=True
     )
+    hero_image = forms.ImageField(  # New field for hero image
+        label="Hero Image (Cover Photo)",
+        required=False,
+        help_text="Upload a cover image for your profile page (optional). Recommended size: 1200x500px.",
+    )
 
     class Meta:
         model = Professional
         fields = [
-            'field', 'new_field', 'subfield', 'location', 'skills', 'photo', 'bio',
+            'field', 'new_field', 'subfield', 'location', 'skills', 'photo', 'hero_image', 'bio',  # Added hero_image
             'linkedin_url', 'twitter_url', 'github_url', 'website_url',
             'cv', 'certificates'
         ]

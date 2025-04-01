@@ -12,8 +12,8 @@
                         <h3 class="card-title">{{ user.username }}</h3>
                         {% if professional %}
                             <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
-                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1 }} ({{ professional.reviews.count }})</p>
-                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count }} Followers</p>
+                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1|default:"N/A" }} ({{ professional.reviews.count|default:0 }})</p>
+                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count|default:0 }} Followers</p>
                             <a href="{% url 'core:professional_detail' professional.id %}" class="btn btn-outline-primary btn-sm mt-3">View Public Profile</a>
                         {% else %}
                             <p class="text-muted">Not a professional yet.</p>
@@ -28,6 +28,16 @@
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <h4 class="card-title fw-bold mb-4">Edit Profile</h4>
+                        {% if user_form.errors or professional_form.errors %}
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    {% for error in user_form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                                    {% for error in professional_form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+                                    {% for field in user_form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+                                    {% for field in professional_form %}{% for error in field.errors %}<li>{{ field.label }}: {{ error }}</li>{% endfor %}{% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
                         <form method="post" enctype="multipart/form-data">
                             {% csrf_token %}
                             <h5 class="fw-bold mb-3">User Profile</h5>
@@ -50,6 +60,10 @@
                                         {{ professional_form.field }}
                                     </div>
                                     <div class="col-md-6">
+                                        <label for="id_new_field" class="form-label">New Field (if not in list)</label>
+                                        {{ professional_form.new_field }}
+                                    </div>
+                                    <div class="col-md-6">
                                         <label for="id_subfield" class="form-label">Subfield</label>
                                         {{ professional_form.subfield }}
                                     </div>
@@ -65,9 +79,22 @@
                                         <label for="id_photo" class="form-label">Professional Photo</label>
                                         {{ professional_form.photo }}
                                     </div>
+                                    <div class="col-md-6">
+                                        <label for="id_hero_image" class="form-label">Hero Image (Cover Photo)</label>
+                                        {{ professional_form.hero_image }}
+                                        <small class="text-muted">Recommended size: 1200x500px</small>
+                                    </div>
                                     <div class="col-12">
                                         <label for="id_bio" class="form-label">Professional Bio</label>
                                         {{ professional_form.bio }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_cv" class="form-label">CV (PDF)</label>
+                                        {{ professional_form.cv }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_certificates" class="form-label">Certificates (PDF)</label>
+                                        {{ professional_form.certificates }}
                                     </div>
                                 </div>
                             {% endif %}

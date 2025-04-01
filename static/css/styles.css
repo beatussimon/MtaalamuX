@@ -42,15 +42,7 @@ body {
     flex: 1 0 auto;
 }
 
-footer {
-    flex-shrink: 0;
-    background: linear-gradient(90deg, var(--background-dark), #16213e);
-    color: var(--text-dark);
-}
 
-footer .small {
-    font-size: 0.875rem;
-}
 
 .social-links i {
     font-size: 1.25rem;
@@ -401,4 +393,177 @@ footer .small {
 .category-scroll {
     padding-left: 10px;
     padding-right: 10px;
+}
+
+
+
+
+/* static/css/styles.css */
+
+/* Make sure body and html can potentially fill height if needed */
+html, body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure body takes at least full viewport height */
+}
+
+
+footer {
+    flex-shrink: 0;
+    background: linear-gradient(90deg, var(--background-dark), #16213e);
+    color: var(--text-dark);
+}
+
+footer .small {
+    font-size: 0.875rem;
+}
+.content-wrapper {
+    flex-grow: 1; /* Allows main content to push footer down */
+}
+
+#main-footer {
+    opacity: 0; /* Start hidden */
+    visibility: hidden; /* Hide from accessibility tree when invisible */
+    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out; /* Smooth fade */
+    /* mt-auto is already pushing it down in flex context, which is good */
+}
+
+#main-footer.footer-visible {
+    opacity: 1; /* Make visible */
+    visibility: visible;
+}
+
+
+.professional-hero {
+    overflow: hidden; /* Prevent image overflow */
+}
+.card:hover {
+    transform: scale(1.02);
+    transition: transform 0.2s;
+}
+.sticky-top {
+    z-index: 1000; /* Ensure sidebar stays above other content */
+}
+@media (max-width: 991px) {
+    .sticky-top {
+        position: static; /* Disable sticky on smaller screens if needed */
+    }
+}
+
+
+
+
+/* CIRCLES */
+/* Keep existing scrollbar styles */
+.category-scroll-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #e9ecef; /* Adjusted colors slightly */
+}
+.category-scroll-container::-webkit-scrollbar { height: 6px; } /* Thinner */
+.category-scroll-container::-webkit-scrollbar-thumb { background: #6c757d; border-radius: 3px; }
+.category-scroll-container::-webkit-scrollbar-track { background: #e9ecef; }
+
+.category-scroll {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* Styles for each category link container */
+.category-circle {
+    display: inline-block; /* Allow items to sit side-by-side */
+    min-width: 70px; /* Ensure enough space for text */
+}
+
+/* Base circle style */
+.category-circle .circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden; /* Important for image containment */
+    margin-left: auto; /* Center the circle horizontally */
+    margin-right: auto;
+    display: flex; /* Use flex for centering initials */
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa; /* Light default background */
+    border: 1px solid #dee2e6; /* Subtle border */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Add transitions */
+}
+
+/* Style for circles using background-image */
+.category-circle .circle-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-color: transparent; /* Remove border if image is present */
+}
+
+/* Style for circles using initials */
+.category-circle .circle-initials {
+    font-size: 1.2rem; /* Slightly smaller initials */
+    font-weight: 600; /* Semi-bold */
+    /* bg-primary and text-white are added via class */
+}
+
+/* Hover effect for circles */
+.category-circle:hover .circle {
+    transform: scale(1.1); /* Slightly enlarge on hover */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Active state styling */
+.category-circle.active .circle {
+    border-width: 2px;
+    border-color: var(--bs-primary); /* Use Bootstrap primary color */
+    box-shadow: 0 0 8px rgba(var(--bs-primary-rgb), 0.6);
+}
+.category-circle.active p {
+    font-weight: 600; /* Bold text for active category */
+    color: var(--bs-primary) !important; /* Use primary color */
+}
+
+/* Ensure text below circle doesn't wrap awkwardly */
+.category-circle p {
+    white-space: normal; /* Allow text to wrap if needed */
+    word-wrap: break-word;
+    font-size: 0.75rem; /* Slightly smaller text */
+    line-height: 1.2;
+    margin-bottom: 0;
+}
+
+/* === Professional Card Adjustments === */
+.professional-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+.professional-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+/* Ensure card link covers the card */
+.professional-card .stretched-link::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    content: "";
+}
+
+.sticky-top {
+    z-index: 1000; /* Ensure it stays above content */
+}
+.form-label {
+    font-weight: 500;
+}
+small.text-muted {
+    display: block;
+    margin-top: 0.25rem;
 }
