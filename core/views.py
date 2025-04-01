@@ -706,11 +706,17 @@ def feedback(request):
 
 @login_required
 def notifications(request):
-    notifications = request.user.notifications.all().order_by('-created_at')
-    # Mark notifications as read when viewed
-    if notifications:
-        notifications.update(is_read=True)
-    return render(request, 'core/notifications.html', {'notifications': notifications})
+    notifications_list = Notification.objects.filter(user=request.user).order_by('-created_at')
+    paginator = Paginator(notifications_list, 10)  # 10 notifications per page
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'notifications': page_obj,
+        'page_obj': page_obj,
+        'site_theme': request.session.get('theme', 'light')
+    }
+    return render(request, 'core/notifications.html', context)
 
 #For teh admin dashboard
 
@@ -915,11 +921,15 @@ def insights(request):
         'site_theme': request.session.get('theme', 'light')
     })
 
+@login_required
 def clear_notifications(request):
-    try:
-        Notification.objects.filter(user=request.user).update(is_read=True)
-    except ObjectDoesNotExist:
-        print("No notifications found for the user.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    if request.method == 'POST':
+        Notification.objects.filter(user=request.user).delete()
+        return redirect('core:notifications')
+    return redirect('core:notifications')
+
+@login_required
+def delete_notification(request, notification_id):
+    notification = Notification.objects.get(id=notification_id, user=request.user)
+    notification.delete()
     return redirect('core:notifications')

@@ -38,6 +38,7 @@ urlpatterns = [
     path('signup/', views.signup, name='signup'),
     path('verify-email/<uuid:token>/', views.verify_email, name='verify_email'),
     path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
+    path('notifications/delete/<int:notification_id>/', views.delete_notification, name='delete_notification'),
 ]
 
 accounts_urlpatterns = [
