@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Insights - mtaalamuX{% endblock %}
+
+{% block content %}
+    <div class="container my-5">
+        <h1 class="text-center mb-4">Insights</h1>
+        <p class="text-center text-muted mb-5">Explore the latest articles from our experts.</p>
+
+        {% if articles %}
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for article in articles %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if article.image %}
+                                <img src="{{ article.image.url }}" class="card-img-top" alt="{{ article.title }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <img src="{% static 'img/default_article.jpg' %}" class="card-img-top" alt="Default Article Image" style="height: 200px; object-fit: cover;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ article.title }}</h5>
+                                <p class="card-text">{{ article.excerpt|truncatewords:20 }}</p>
+                                <div class="article-stats mb-2">
+                                    <span><i class="fas fa-user me-1"></i>{{ article.author }}</span>
+                                    <span class="ms-3"><i class="fas fa-calendar-alt me-1"></i>{{ article.created_at|date:"M d, Y" }}</span>
+                                </div>
+                                <a href="{% url 'core:article_detail' article.id %}" class="btn btn-primary btn-sm">Read More</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center">
+                <p class="text-muted">No articles available yet. Check back soon!</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

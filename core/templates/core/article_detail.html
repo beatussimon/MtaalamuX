@@ -9,7 +9,7 @@
         {% else %}
             <img src="{% static 'img/default_article.jpg' %}" class="img-fluid rounded w-100" alt="Default Article Image" style="max-height: 500px; object-fit: cover;">
         {% endif %}
-        <div class="article-hero-overlay position-absolute bottom-0 start-0 w-100 p-4">
+        <div class="article-hero-overlay position-absolute bottom-0 start-0 w-100 p-4" style="background: rgba(0, 0, 0, 0.5);">
             <h1 class="display-4 fw-bold text-white mb-2">{{ article.title }}</h1>
             <p class="text-white mb-0">
                 By <a href="{% url 'core:professional_detail' article.author.id %}" class="text-white text-decoration-none fw-bold">{{ article.author.user.username }}</a> - 
@@ -25,9 +25,9 @@
             <div class="col-lg-8">
                 <div class="article-content bg-white p-4 rounded shadow-sm">
                     <div class="article-stats d-flex gap-3 mb-4">
-                        <span class="text-muted"><i class="fas fa-heart text-danger me-1"></i> {{ article.like_count }} Likes</span>
-                        <span class="text-muted"><i class="fas fa-eye me-1"></i> {{ article.views }} Views</span>
-                        <span class="text-muted"><i class="fas fa-share me-1"></i> {{ article.shares }} Shares</span>
+                        <span class="text-muted"><i class="fas fa-heart text-danger me-1"></i> {{ article.like_count|default:0 }} Likes</span>
+                        <span class="text-muted"><i class="fas fa-eye me-1"></i> {{ article.views|default:0 }} Views</span>
+                        <span class="text-muted"><i class="fas fa-share me-1"></i> {{ article.shares|default:0 }} Shares</span>
                     </div>
                     <div class="article-body mb-5">
                         <p class="lead text-dark">{{ article.content|linebreaks }}</p>
@@ -59,7 +59,7 @@
 
                     <!-- Comments Section -->
                     <div class="comments-section">
-                        <h4 class="fw-bold mb-4">Comments ({{ article.comment_set.count }})</h4>
+                        <h4 class="fw-bold mb-4">Comments ({{ article.comment_set.count|default:0 }})</h4>
                         {% if user.is_authenticated %}
                             <form method="post" class="mb-5">
                                 {% csrf_token %}
@@ -70,14 +70,21 @@
                                         <button type="submit" class="btn btn-primary rounded-pill"><i class="fas fa-paper-plane"></i></button>
                                     </div>
                                 </div>
+                                {% if form.errors %}
+                                    <div class="text-danger mt-2">{{ form.errors.comment }}</div>
+                                {% endif %}
                             </form>
                         {% endif %}
                         {% for comment in article.comment_set.all %}
                             <div class="comment d-flex gap-3 mb-4">
-                                <img src="{% if comment.user.userprofile.avatar %}{{ comment.user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="Commenter Avatar" style="width: 40px; height: 40px; object-fit: cover;">
+                                <img src="{% if comment.user.userprofile.avatar %}{{ comment.user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ comment.user.username }}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
                                 <div class="comment-body flex-grow-1">
                                     <p class="mb-1">
-                                        <a href="{% url 'core:professional_detail' comment.user.id %}" class="text-dark text-decoration-none fw-bold">{{ comment.user.username }}</a>
+                                        {% if comment.user.professional %}
+                                            <a href="{% url 'core:professional_detail' comment.user.professional.id %}" class="text-dark text-decoration-none fw-bold">{{ comment.user.username }}</a>
+                                        {% else %}
+                                            <span class="text-dark fw-bold">{{ comment.user.username }}</span>
+                                        {% endif %}
                                         <span class="text-muted small ms-2">{{ comment.created_at|timesince }} ago</span>
                                     </p>
                                     <p class="text-dark">{{ comment.content }}</p>
@@ -99,7 +106,7 @@
                             <img src="{% if article.author.photo %}{{ article.author.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="Author Photo" style="width: 100px; height: 100px; object-fit: cover;">
                             <h5 class="card-title"><a href="{% url 'core:professional_detail' article.author.id %}" class="text-dark text-decoration-none">{{ article.author.user.username }}</a></h5>
                             <p class="text-muted">{{ article.author.field }} - {{ article.author.subfield }}</p>
-                            <p class="text-muted"><i class="fas fa-users me-1"></i> {{ article.author.follower_count }} Followers</p>
+                            <p class="text-muted"><i class="fas fa-users me-1"></i> {{ article.author.follower_count|default:0 }} Followers</p>
                             {% if user.is_authenticated %}
                                 <form method="post" action="{% url 'core:toggle_follow' article.author.id %}">
                                     {% csrf_token %}
@@ -140,20 +147,20 @@
     </div>
 
     <!-- Floating Action Bar (Visible on Scroll) -->
-    <div class="floating-action-bar d-none d-lg-block">
+    <div class="floating-action-bar d-none d-lg-block position-fixed bottom-0 end-0 p-3" style="z-index: 1000;">
         <div class="d-flex gap-2">
             <form method="post" class="d-inline">
                 {% csrf_token %}
                 <input type="hidden" name="like" value="true">
                 <button type="submit" class="btn btn-outline-danger btn-sm btn-action">
-                    <i class="fas fa-heart me-1"></i> {{ article.like_count }}
+                    <i class="fas fa-heart me-1"></i> {{ article.like_count|default:0 }}
                 </button>
             </form>
             <form method="post" class="d-inline">
                 {% csrf_token %}
                 <input type="hidden" name="share" value="true">
                 <button type="submit" class="btn btn-outline-primary btn-sm btn-action">
-                    <i class="fas fa-share me-1"></i> {{ article.shares }}
+                    <i class="fas fa-share me-1"></i> {{ article.shares|default:0 }}
                 </button>
             </form>
         </div>

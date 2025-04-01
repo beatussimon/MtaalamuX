@@ -151,14 +151,13 @@ class ArticleListView(ListView):
 
         return context
 
-
-class ArticleDetailView(DetailView):
+class ArticleDetailView(LoginRequiredMixin, DetailView):  # Add LoginRequiredMixin
     model = Article
     template_name = 'core/article_detail.html'
     context_object_name = 'article'
 
-    def get_object(self):
-        obj = super().get_object()
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
         obj.views += 1
         obj.save()
         return obj
@@ -171,18 +170,43 @@ class ArticleDetailView(DetailView):
 
     def post(self, request, *args, **kwargs):
         article = self.get_object()
+        print(f"POST data: {request.POST}")  # Debug
+
         if 'comment' in request.POST:
-            Comment.objects.create(article=article, user=request.user, content=request.POST['comment'])
-            Notification.objects.create(user=article.author.user, message=f"{request.user.username} commented on your article", link=f"/articles/{article.id}/")
+            content = request.POST['comment'].strip()
+            if content:  # Ensure non-empty
+                try:
+                    comment = Comment.objects.create(
+                        article=article,
+                        user=request.user,
+                        content=content
+                    )
+                    Notification.objects.create(
+                        user=article.author.user,
+                        message=f"{request.user.username} commented on your article",
+                        link=f"/articles/{article.id}/"
+                    )
+                    print(f"Comment saved: {comment.content} by {request.user.username}")
+                except Exception as e:
+                    print(f"Error saving comment: {e}")
+            else:
+                print("Comment was empty, not saved.")
+
         elif 'like' in request.POST:
             if request.user in article.likes.all():
                 article.likes.remove(request.user)
             else:
                 article.likes.add(request.user)
-                Notification.objects.create(user=article.author.user, message=f"{request.user.username} liked your article", link=f"/articles/{article.id}/")
+                Notification.objects.create(
+                    user=article.author.user,
+                    message=f"{request.user.username} liked your article",
+                    link=f"/articles/{article.id}/"
+                )
+
         elif 'share' in request.POST:
             article.shares += 1
             article.save()
+
         return redirect('core:article_detail', pk=article.id)
 
 @login_required
