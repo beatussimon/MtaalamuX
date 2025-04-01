@@ -83,7 +83,7 @@
         </div>
     </nav>
 
-    <main class="flex-grow东西 py-4">
+    <main class="flex-grow-1 py-4">
         {% block content %}{% endblock %}
     </main>
 
@@ -123,27 +123,38 @@
             const themeToggleIcon = document.getElementById('theme-toggle-icon');
             const htmlElement = document.documentElement;
 
-            const applyTheme = (theme) => {
+            // Apply theme function
+            function applyTheme(theme) {
                 const isDark = theme === 'dark';
                 htmlElement.classList.toggle('dark-mode', isDark);
-                themeToggleButton.classList.toggle('btn-outline-light', isDark);
-                themeToggleButton.classList.toggle('btn-outline-secondary', !isDark);
-                themeToggleIcon.classList.toggle('fa-sun', isDark);
-                themeToggleIcon.classList.toggle('fa-moon', !isDark);
-            };
+                if (themeToggleButton) {
+                    themeToggleButton.classList.toggle('btn-outline-light', isDark);
+                    themeToggleButton.classList.toggle('btn-outline-secondary', !isDark);
+                }
+                if (themeToggleIcon) {
+                    themeToggleIcon.classList.toggle('fa-sun', isDark);
+                    themeToggleIcon.classList.toggle('fa-moon', !isDark);
+                }
+            }
 
+            // Set initial theme from server-rendered state
             let currentTheme = htmlElement.classList.contains('dark-mode') ? 'dark' : 'light';
-            applyTheme(currentTheme); // Ensure button/icon match server state
+            applyTheme(currentTheme); // Apply immediately to match server state
 
-            themeToggleButton.addEventListener('click', () => {
-                currentTheme = htmlElement.classList.contains('dark-mode') ? 'light' : 'dark';
-                applyTheme(currentTheme);
-                localStorage.setItem('theme', currentTheme);
-            });
-
+            // Check localStorage and override if different
             const storedTheme = localStorage.getItem('theme');
             if (storedTheme && storedTheme !== currentTheme) {
+                currentTheme = storedTheme;
                 applyTheme(storedTheme);
+            }
+
+            // Toggle theme on button click
+            if (themeToggleButton) {
+                themeToggleButton.addEventListener('click', function() {
+                    currentTheme = htmlElement.classList.contains('dark-mode') ? 'light' : 'dark';
+                    applyTheme(currentTheme);
+                    localStorage.setItem('theme', currentTheme);
+                });
             }
         });
     </script>

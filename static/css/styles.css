@@ -65,19 +65,19 @@ main {
 
 .navbar-dark .navbar-brand,
 .navbar-dark .navbar-nav .nav-link {
-    color: #ffffff;
+    color: var(--text-dark);
 }
 
 .navbar-brand {
     font-size: 1.8rem;
 }
 
-.navbar-dark .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+.navbar-light .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(51, 51, 51, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
-.navbar-light .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(52, 58, 64, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+.navbar-dark .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
 .bg-gradient {
@@ -97,13 +97,10 @@ main {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
-.hover-shadow:hover {
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
-
 .card-title {
     font-size: 1.25rem;
     font-weight: 700;
+    color: var(--text-light);
 }
 
 .card-body {
@@ -116,6 +113,7 @@ main {
     border: none;
     border-radius: 25px;
     padding: 0.75rem 1.5rem;
+    color: #fff;
     transition: background 0.3s;
 }
 
@@ -254,7 +252,7 @@ main {
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: #6c757d #e9ecef;
+    scrollbar-color: var(--muted-light) var(--background-light);
 }
 
 .category-scroll-container::-webkit-scrollbar {
@@ -262,12 +260,12 @@ main {
 }
 
 .category-scroll-container::-webkit-scrollbar-thumb {
-    background: #6c757d;
+    background: var(--muted-light);
     border-radius: 3px;
 }
 
 .category-scroll-container::-webkit-scrollbar-track {
-    background: #e9ecef;
+    background: var(--background-light);
 }
 
 .category-scroll {
@@ -290,8 +288,8 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
+    background-color: var(--card-light);
+    border: 1px solid var(--muted-light);
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
@@ -305,6 +303,7 @@ main {
 .category-circle .circle-initials {
     font-size: 1.2rem;
     font-weight: 600;
+    color: var(--text-light);
 }
 
 .category-circle:hover .circle {
@@ -329,6 +328,7 @@ main {
     font-size: 0.75rem;
     line-height: 1.2;
     margin-bottom: 0;
+    color: var(--text-light);
 }
 
 /* Professional Card */
@@ -364,12 +364,15 @@ main {
 /* Forms */
 .form-label {
     font-weight: 500;
+    color: var(--text-light);
 }
 
 .form-control, .form-control-file {
     border-radius: 8px;
-    border: 1px solid #ced4da;
-    transition: border-color 0.3s;
+    border: 1px solid var(--muted-light);
+    background-color: var(--card-light);
+    color: var(--text-light);
+    transition: border-color 0.3s, background-color 0.3s, color 0.3s;
 }
 
 .form-control:focus {
@@ -384,6 +387,7 @@ main {
 small.text-muted {
     display: block;
     margin-top: 0.25rem;
+    color: var(--muted-light);
 }
 
 /* Footer */
@@ -409,6 +413,10 @@ footer .small {
 }
 
 /* Social Links */
+.social-links a {
+    color: var(--text-light);
+}
+
 .social-links i {
     font-size: 1.25rem;
 }
@@ -445,10 +453,11 @@ footer .small {
     background-color: var(--card-dark);
 }
 
-.dark-mode .text-dark,
 .dark-mode .card-title,
-.dark-mode h6 a,
-.dark-mode .article-body p {
+.dark-mode .article-body p,
+.dark-mode .category-circle .circle-initials,
+.dark-mode .category-circle p,
+.dark-mode .form-label {
     color: var(--text-dark);
 }
 
@@ -489,4 +498,21 @@ footer .small {
 
 .dark-mode .social-links a {
     color: var(--text-dark);
+}
+
+.dark-mode .category-scroll-container {
+    scrollbar-color: var(--muted-dark) var(--background-dark);
+}
+
+.dark-mode .category-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--muted-dark);
+}
+
+.dark-mode .category-scroll-container::-webkit-scrollbar-track {
+    background: var(--background-dark);
+}
+
+.dark-mode .category-circle .circle {
+    background-color: var(--card-dark);
+    border-color: var(--muted-dark);
 }
