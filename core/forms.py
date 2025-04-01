@@ -80,6 +80,14 @@ class MessageForm(forms.ModelForm):
     class Meta:
         model = Message
         fields = ['content', 'file']
+        widgets = {
+            'content': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Type your message...', 'class': 'form-control'}),
+            'file': forms.FileInput(attrs={'class': 'form-control file-input'}),
+        }
+        labels = {
+            'content': '',  # Remove label for cleaner look
+            'file': '',     # Remove label
+        }
 
 class ArticleForm(forms.ModelForm):
     class Meta:
