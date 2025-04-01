@@ -32,49 +32,59 @@ html, body {
 body {
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
     font-family: 'Poppins', sans-serif;
     background-color: var(--background-light);
     color: var(--text-light);
     transition: background-color 0.3s, color 0.3s;
 }
 
-.content-wrapper {
-    flex: 1 0 auto;
+main {
+    flex-grow: 1;
 }
 
-
-
-.social-links i {
-    font-size: 1.25rem;
-}
-
-.bg-gradient {
-    background: linear-gradient(90deg, var(--primary), var(--secondary));
-}
-
+/* Navbar */
 .navbar {
     padding: 1rem 0;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s;
+}
+
+.navbar-light {
+    background-color: var(--background-light);
+}
+
+.navbar-light .navbar-brand,
+.navbar-light .navbar-nav .nav-link {
+    color: var(--text-light);
+}
+
+.navbar-dark {
     background-color: var(--navbar-dark);
 }
 
-.navbar.bg-gradient {
-    background: linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
+.navbar-dark .navbar-brand,
+.navbar-dark .navbar-nav .nav-link {
+    color: #ffffff;
 }
 
 .navbar-brand {
     font-size: 1.8rem;
-    color: #ffffff;
-}
-
-.navbar-dark .navbar-nav .nav-link {
-    color: #ffffff;
 }
 
 .navbar-dark .navbar-toggler-icon {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
+.navbar-light .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(52, 58, 64, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+.bg-gradient {
+    background: linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
+}
+
+/* Cards */
 .card {
     border: none;
     border-radius: 15px;
@@ -91,6 +101,16 @@ body {
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
 }
 
+.card-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Buttons */
 .btn-primary {
     background: linear-gradient(90deg, var(--primary), var(--secondary));
     border: none;
@@ -103,6 +123,16 @@ body {
     background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
 }
 
+.btn-action {
+    transition: all 0.3s ease;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Hero Section */
 .hero-section {
     padding: 4rem 0;
     background: linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
@@ -110,6 +140,7 @@ body {
     min-height: 300px;
 }
 
+/* Chat Box */
 .chat-box {
     scrollbar-width: thin;
     scrollbar-color: var(--primary) transparent;
@@ -124,7 +155,7 @@ body {
     border-radius: 4px;
 }
 
-/* Article Detail Page Styling */
+/* Article Detail */
 .article-hero {
     margin-top: -20px;
 }
@@ -135,6 +166,7 @@ body {
 
 .article-content {
     line-height: 1.8;
+    background-color: var(--card-light);
 }
 
 .article-body p {
@@ -147,36 +179,45 @@ body {
     color: var(--muted-light);
 }
 
-.btn-action {
-    transition: all 0.3s ease;
-}
-
-.btn-action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
 .comments-section .comment {
     transition: background-color 0.3s ease;
 }
 
 .comments-section .comment:hover {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-}
-
-.input-group .form-control.rounded-pill {
-    border-right: none;
-}
-
-.input-group .btn.rounded-pill {
-    border-left: none;
+    background-color: var(--card-light);
 }
 
 .related-article:hover h6 a {
     color: var(--primary);
 }
 
+/* Professional Detail */
+.professional-hero {
+    margin-top: -20px;
+    overflow: hidden;
+}
+
+.professional-hero-overlay {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+}
+
+.review {
+    transition: background-color 0.3s ease;
+}
+
+.review:hover {
+    background-color: var(--card-light);
+}
+
+.portfolio-item img {
+    transition: transform 0.3s ease;
+}
+
+.portfolio-item img:hover {
+    transform: scale(1.05);
+}
+
+/* Floating Action Bar */
 .floating-action-bar {
     position: fixed;
     bottom: 20px;
@@ -192,78 +233,7 @@ body {
     font-size: 0.9rem;
 }
 
-/* Professional Detail Page Styling */
-.professional-hero {
-    margin-top: -20px;
-}
-
-.professional-hero-overlay {
-    background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-}
-
-.review {
-    transition: background-color 0.3s ease;
-}
-
-.review:hover {
-    background-color: #f8f9fa;
-    border-radius: 8px;
-}
-
-.portfolio-item img {
-    transition: transform 0.3s ease;
-}
-
-.portfolio-item img:hover {
-    transform: scale(1.05);
-}
-
-/* Dark Mode Styles */
-.dark-mode {
-    background-color: var(--background-dark);
-    color: var(--text-dark);
-}
-
-.dark-mode .card,
-.dark-mode .floating-action-bar {
-    background-color: var(--card-dark);
-}
-
-.dark-mode .text-dark,
-.dark-mode .card-title,
-.dark-mode h6 a,
-.dark-mode .article-body p {
-    color: var(--text-dark);
-}
-
-.dark-mode .text-muted,
-.dark-mode .article-stats span {
-    color: var(--muted-dark);
-}
-
-.dark-mode .article-content {
-    background-color: var(--card-dark);
-}
-
-.dark-mode .comments-section .comment:hover,
-.dark-mode .review:hover {
-    background-color: #3a3f44;
-}
-
-.dark-mode .hero-section {
-    background: linear-gradient(135deg, rgba(var(--primary), 0.2), rgba(var(--secondary), 0.2));
-}
-
-/* Additional Professional Detail Page Styling */
-.card-body {
-    padding: 1.5rem;
-}
-
-.card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
+/* Badges */
 .badge.bg-primary {
     background-color: var(--primary) !important;
     color: #fff;
@@ -278,58 +248,110 @@ body {
     border-radius: 20px;
 }
 
-/* Category Scroll Container */
+/* Category Scroll */
 .category-scroll-container {
-    overflow-x: hidden;
-}
-
-.category-scroll {
     overflow-x: auto;
     white-space: nowrap;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #6c757d #e9ecef;
 }
 
-.category-scroll::-webkit-scrollbar {
-    height: 8px;
+.category-scroll-container::-webkit-scrollbar {
+    height: 6px;
 }
 
-.category-scroll::-webkit-scrollbar-thumb {
-    background-color: var(--primary);
-    border-radius: 4px;
+.category-scroll-container::-webkit-scrollbar-thumb {
+    background: #6c757d;
+    border-radius: 3px;
+}
+
+.category-scroll-container::-webkit-scrollbar-track {
+    background: #e9ecef;
+}
+
+.category-scroll {
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 .category-circle {
     display: inline-block;
-    width: 80px;
+    min-width: 70px;
 }
 
 .category-circle .circle {
-    width: 60px;
-    height: 60px;
-    font-size: 1.5rem;
-    font-weight: bold;
-    transition: transform 0.3s ease;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.category-circle .circle-image {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-color: transparent;
+}
+
+.category-circle .circle-initials {
+    font-size: 1.2rem;
+    font-weight: 600;
 }
 
 .category-circle:hover .circle {
     transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .category-circle.active .circle {
-    background-color: var(--secondary) !important;
+    border-width: 2px;
+    border-color: var(--primary);
+    box-shadow: 0 0 8px rgba(var(--primary), 0.6);
+}
+
+.category-circle.active p {
+    font-weight: 600;
+    color: var(--primary) !important;
+}
+
+.category-circle p {
+    white-space: normal;
+    word-wrap: break-word;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    margin-bottom: 0;
 }
 
 /* Professional Card */
 .professional-card {
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
 .professional-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
 }
 
-/* Homepage Styling */
+.professional-card .stretched-link::after {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    content: "";
+}
+
+/* Job Card */
 .job-card {
     transition: transform 0.3s, box-shadow 0.3s;
 }
@@ -339,7 +361,7 @@ body {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
-/* Form Styling */
+/* Forms */
 .form-label {
     font-weight: 500;
 }
@@ -359,59 +381,12 @@ body {
     color: #dc3545;
 }
 
-
-
-
-
-.category-scroll-container {
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
-    scrollbar-width: thin; /* Thinner scrollbar for Firefox */
-    scrollbar-color: #888 #f1f1f1; /* Custom scrollbar colors */
+small.text-muted {
+    display: block;
+    margin-top: 0.25rem;
 }
 
-/* Hide scrollbar on Webkit browsers (Chrome, Safari) but keep it functional */
-.category-scroll-container::-webkit-scrollbar {
-    height: 8px;
-}
-.category-scroll-container::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-.category-scroll-container::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.category-circle .circle {
-    width: 50px;
-    height: 50px;
-    font-size: 1.5rem;
-}
-
-/* Ensure the first and last items don’t touch the edges */
-.category-scroll {
-    padding-left: 10px;
-    padding-right: 10px;
-}
-
-
-
-
-/* static/css/styles.css */
-
-/* Make sure body and html can potentially fill height if needed */
-html, body {
-    height: 100%;
-}
-
-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh; /* Ensure body takes at least full viewport height */
-}
-
-
+/* Footer */
 footer {
     flex-shrink: 0;
     background: linear-gradient(90deg, var(--background-dark), #16213e);
@@ -421,149 +396,97 @@ footer {
 footer .small {
     font-size: 0.875rem;
 }
-.content-wrapper {
-    flex-grow: 1; /* Allows main content to push footer down */
-}
 
 #main-footer {
-    opacity: 0; /* Start hidden */
-    visibility: hidden; /* Hide from accessibility tree when invisible */
-    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out; /* Smooth fade */
-    /* mt-auto is already pushing it down in flex context, which is good */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
 }
 
 #main-footer.footer-visible {
-    opacity: 1; /* Make visible */
+    opacity: 1;
     visibility: visible;
 }
 
+/* Social Links */
+.social-links i {
+    font-size: 1.25rem;
+}
 
-.professional-hero {
-    overflow: hidden; /* Prevent image overflow */
-}
-.card:hover {
-    transform: scale(1.02);
-    transition: transform 0.2s;
-}
+/* Sticky Elements */
 .sticky-top {
-    z-index: 1000; /* Ensure sidebar stays above other content */
+    z-index: 1000;
 }
+
 @media (max-width: 991px) {
     .sticky-top {
-        position: static; /* Disable sticky on smaller screens if needed */
+        position: static;
     }
 }
 
-
-
-
-/* CIRCLES */
-/* Keep existing scrollbar styles */
-.category-scroll-container {
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: #6c757d #e9ecef; /* Adjusted colors slightly */
-}
-.category-scroll-container::-webkit-scrollbar { height: 6px; } /* Thinner */
-.category-scroll-container::-webkit-scrollbar-thumb { background: #6c757d; border-radius: 3px; }
-.category-scroll-container::-webkit-scrollbar-track { background: #e9ecef; }
-
-.category-scroll {
-    padding-left: 10px;
-    padding-right: 10px;
+/* Dark Mode Styles */
+.dark-mode {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
 }
 
-/* Styles for each category link container */
-.category-circle {
-    display: inline-block; /* Allow items to sit side-by-side */
-    min-width: 70px; /* Ensure enough space for text */
+.dark-mode .navbar-light {
+    background-color: var(--navbar-dark);
 }
 
-/* Base circle style */
-.category-circle .circle {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    overflow: hidden; /* Important for image containment */
-    margin-left: auto; /* Center the circle horizontally */
-    margin-right: auto;
-    display: flex; /* Use flex for centering initials */
-    align-items: center;
-    justify-content: center;
-    background-color: #f8f9fa; /* Light default background */
-    border: 1px solid #dee2e6; /* Subtle border */
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; /* Add transitions */
+.dark-mode .navbar-light .navbar-brand,
+.dark-mode .navbar-light .navbar-nav .nav-link {
+    color: var(--text-dark);
 }
 
-/* Style for circles using background-image */
-.category-circle .circle-image {
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    border-color: transparent; /* Remove border if image is present */
+.dark-mode .card,
+.dark-mode .floating-action-bar,
+.dark-mode .article-content {
+    background-color: var(--card-dark);
 }
 
-/* Style for circles using initials */
-.category-circle .circle-initials {
-    font-size: 1.2rem; /* Slightly smaller initials */
-    font-weight: 600; /* Semi-bold */
-    /* bg-primary and text-white are added via class */
+.dark-mode .text-dark,
+.dark-mode .card-title,
+.dark-mode h6 a,
+.dark-mode .article-body p {
+    color: var(--text-dark);
 }
 
-/* Hover effect for circles */
-.category-circle:hover .circle {
-    transform: scale(1.1); /* Slightly enlarge on hover */
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.dark-mode .text-muted,
+.dark-mode .article-stats span,
+.dark-mode small.text-muted {
+    color: var(--muted-dark);
 }
 
-/* Active state styling */
-.category-circle.active .circle {
-    border-width: 2px;
-    border-color: var(--bs-primary); /* Use Bootstrap primary color */
-    box-shadow: 0 0 8px rgba(var(--bs-primary-rgb), 0.6);
-}
-.category-circle.active p {
-    font-weight: 600; /* Bold text for active category */
-    color: var(--bs-primary) !important; /* Use primary color */
+.dark-mode .comments-section .comment:hover,
+.dark-mode .review:hover {
+    background-color: var(--card-dark);
 }
 
-/* Ensure text below circle doesn't wrap awkwardly */
-.category-circle p {
-    white-space: normal; /* Allow text to wrap if needed */
-    word-wrap: break-word;
-    font-size: 0.75rem; /* Slightly smaller text */
-    line-height: 1.2;
-    margin-bottom: 0;
+.dark-mode .hero-section {
+    background: linear-gradient(135deg, rgba(var(--primary), 0.2), rgba(var(--secondary), 0.2));
 }
 
-/* === Professional Card Adjustments === */
-.professional-card {
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-.professional-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-}
-/* Ensure card link covers the card */
-.professional-card .stretched-link::after {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 1;
-    content: "";
+.dark-mode .btn-primary {
+    background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
+    color: var(--text-dark);
 }
 
-.sticky-top {
-    z-index: 1000; /* Ensure it stays above content */
+.dark-mode .form-control {
+    background-color: var(--card-dark);
+    color: var(--text-dark);
+    border-color: var(--muted-dark);
 }
-.form-label {
-    font-weight: 500;
+
+.dark-mode .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 5px rgba(var(--primary), 0.5);
 }
-small.text-muted {
-    display: block;
-    margin-top: 0.25rem;
+
+.dark-mode .badge.bg-primary {
+    background-color: var(--primary-dark) !important;
+}
+
+.dark-mode .social-links a {
+    color: var(--text-dark);
 }

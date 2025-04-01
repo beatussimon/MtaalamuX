@@ -9,7 +9,7 @@ from .models import (
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'bio', 'last_seen')
     search_fields = ('user__username', 'bio')
-    list_filter = ('last_seen', 'theme')
+    list_filter = ('last_seen', 'theme',)
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
