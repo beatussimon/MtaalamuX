@@ -1,0 +1,201 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Welcome to mtaalamuX{% endblock %}
+{% block content %}
+    <!-- Hero Section -->
+    <div class="hero-section py-5 mb-5">
+        <div class="container">
+            <div class="row g-4 align-items-center">
+                <!-- Left: Welcome Message -->
+                <div class="col-lg-4 text-center text-lg-start">
+                    <h1 class="display-4 fw-bold mb-3">Find Your Perfect Expert</h1>
+                    <p class="lead text-muted mb-4">Connect with top professionals, explore insightful articles, and discover job opportunities.</p>
+                    <a href="{% url 'core:professional_list' %}" class="btn btn-primary btn-lg">Find an Expert</a>
+                </div>
+                <!-- Middle: Featured Professional -->
+                <div class="col-lg-4 text-center">
+                    {% if top_professionals %}
+                        <div class="card shadow-sm">
+                            <div class="card-body">
+                                <h4 class="fw-bold mb-3">Featured Expert</h4>
+                                <img src="{% if top_professionals.0.photo %}{{ top_professionals.0.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ top_professionals.0.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                                <h5 class="card-title"><a href="{% url 'core:professional_detail' top_professionals.0.id %}" class="text-dark text-decoration-none">{{ top_professionals.0.user.username }}</a></h5>
+                                <p class="text-muted">{{ top_professionals.0.field.name }} - {{ top_professionals.0.subfield }}</p>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No professionals available yet.</p>
+                    {% endif %}
+                </div>
+                <!-- Right: Quick Links -->
+                <div class="col-lg-4 text-center text-lg-end">
+                    <h4 class="fw-bold mb-3">Quick Links</h4>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'core:professional_list' %}" class="text-primary text-decoration-none">Find Experts</a></li>
+                        <li><a href="{% url 'core:job_list' %}" class="text-primary text-decoration-none">Browse Jobs</a></li>
+                        <li><a href="{% url 'core:become_professional' %}" class="text-primary text-decoration-none">Become a Professional</a></li>
+                        <li><a href="{% url 'core:faq' %}" class="text-primary text-decoration-none">FAQs</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Professionals -->
+    <div class="container mb-5">
+        <h2 class="fw-bold mb-4">Top Professionals</h2>
+        <div class="row g-4">
+            {% for professional in top_professionals %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm professional-card">
+                        <div class="card-body text-center">
+                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                            <h5 class="card-title"><a href="{% url 'core:professional_detail' professional.id %}" class="text-dark text-decoration-none">{{ professional.user.username }}</a></h5>
+                            <p class="text-muted">{{ professional.field.name }} - {{ professional.subfield }}</p>
+                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1 }} ({{ professional.reviews.count }})</p>
+                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count }} Followers</p>
+                            <a href="{% url 'core:professional_detail' professional.id %}" class="btn btn-outline-primary btn-sm">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center">
+                    <p class="text-muted">No professionals available yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'core:professional_list' %}" class="btn btn-outline-secondary">See All Professionals</a>
+        </div>
+    </div>
+
+    <!-- Become a Professional -->
+    <div class="container mb-5">
+        <div class="card shadow-sm bg-gradient text-white">
+            <div class="card-body text-center py-5">
+                <h2 class="fw-bold mb-3">Become a Professional</h2>
+                <p class="lead mb-4">Share your expertise, connect with clients, and grow your career with mtaalamuX.</p>
+                {% if user.is_authenticated %}
+                    {% if user.professional %}
+                        <a href="{% url 'core:user_profile' %}" class="btn btn-light btn-lg">Manage Your Profile</a>
+                    {% else %}
+                        <a href="{% url 'core:become_professional' %}" class="btn btn-light btn-lg">Get Started</a>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'login' %}?next={% url 'core:become_professional' %}" class="btn btn-light btn-lg">Sign Up to Become a Professional</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Articles -->
+    <div class="container mb-5">
+        <h2 class="fw-bold mb-4">Recent Articles</h2>
+        <div class="row g-4">
+            {% for article in articles %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            {% if article.image %}
+                                <img src="{{ article.image.url }}" class="card-img-top rounded mb-3" alt="Article image for {{ article.title }}" style="height: 150px; object-fit: cover;">
+                            {% else %}
+                                <img src="{% static 'img/default_article.jpg' %}" class="card-img-top rounded mb-3" alt="Default article image" style="height: 150px; object-fit: cover;">
+                            {% endif %}
+                            <h5 class="card-title"><a href="{% url 'core:article_detail' article.id %}" class="text-dark text-decoration-none">{{ article.title|truncatewords:10 }}</a></h5>
+                            <p class="text-muted small">By <a href="{% url 'core:professional_detail' article.author.id %}" class="text-muted text-decoration-none">{{ article.author.user.username }}</a> - {{ article.publish_date|date:"F d, Y" }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center">
+                    <p class="text-muted">No articles available yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+        {% if articles.paginator.num_pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-5">
+                <ul class="pagination justify-content-center">
+                    {% if articles.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ articles.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% for num in articles.paginator.page_range %}
+                        <li class="page-item {% if articles.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if articles.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ articles.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">»</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+
+    <!-- Job Listings -->
+    <div class="container mb-5">
+        <h2 class="fw-bold mb-4">Recent Job Opportunities</h2>
+        <div class="row g-4">
+            {% for job in recent_jobs %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card shadow-sm job-card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ job.title }}</h5>
+                            <p class="text-muted small">Posted by <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-muted text-decoration-none">{{ job.professional.user.username }}</a> - {{ job.created_at|date:"F d, Y" }}</p>
+                            <p class="text-muted">{{ job.description|truncatewords:20 }}</p>
+                            <a href="{% url 'core:job_detail' job.id %}" class="btn btn-outline-primary btn-sm">View Job</a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center">
+                    <p class="text-muted">No jobs available yet.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'core:job_list' %}" class="btn btn-outline-secondary">See All Jobs</a>
+        </div>
+    </div>
+
+    <!-- Upgrades Section -->
+    <div class="container mb-5">
+        <h2 class="fw-bold mb-4">Upgrade Your Experience</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Premium Profile</h5>
+                        <p class="text-muted">Get a verified badge, priority listing, and more visibility.</p>
+                        <a href="{% url 'core:upgrade' %}" class="btn btn-primary btn-sm">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Featured Articles</h5>
+                        <p class="text-muted">Promote your articles to reach a wider audience.</p>
+                        <a href="{% url 'core:upgrade' %}" class="btn btn-primary btn-sm">Learn More</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Job Boost</h5>
+                        <p class="text-muted">Boost your job postings to attract top talent faster.</p>
+                        <a href="{% url 'core:upgrade' %}" class="btn btn-primary btn-sm">Learn More</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

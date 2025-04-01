@@ -1,5 +1,8 @@
-def theme_processor(request):
+from .models import Notification
+
+def unread_notifications(request):
     if request.user.is_authenticated:
-        profile = request.user.userprofile
-        return {'theme': profile.theme}
-    return {'theme': 'light'}
+        unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    else:
+        unread_count = 0
+    return {'unread_notifications': unread_count}

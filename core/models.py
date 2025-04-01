@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.views.generic import DetailView
-
+import uuid
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -16,27 +16,33 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+class Category(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Professional(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    field = models.CharField(max_length=100)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional')
+    field = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='professionals')
     subfield = models.CharField(max_length=100)
     location = models.CharField(max_length=100)
-    skills = models.CharField(max_length=255, default="")  # Changed to CharField
-    bio = models.TextField()
-    photo = models.ImageField(upload_to='photos/', blank=True, null=True)
-    credentials_file = models.FileField(upload_to='credentials/', blank=True, null=True)
-    rate = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
-    availability = models.CharField(max_length=100, blank=True)
-    social_links = models.JSONField(default=dict)
-    badges = models.JSONField(default=list)
-    followers = models.ManyToManyField(User, related_name='following', blank=True)
+    skills = models.JSONField(default=list)
+    photo = models.ImageField(upload_to='professionals/', blank=True, null=True)
+    bio = models.TextField(blank=True)
     is_verified = models.BooleanField(default=False)
-    verified_date = models.DateTimeField(blank=True, null=True)
-    # follower_count = models.PositiveIntegerField(default=0)  <- REMOVE THIS LINE
+    followers = models.ManyToManyField(User, related_name='following', blank=True)
+    linkedin_url = models.URLField(blank=True, null=True)
+    twitter_url = models.URLField(blank=True, null=True)
+    github_url = models.URLField(blank=True, null=True)
+    website_url = models.URLField(blank=True, null=True)
+    cv = models.FileField(upload_to='verification/cvs/', blank=True, null=True)
+    certificates = models.FileField(upload_to='verification/certificates/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.field}"
-    
+
     def post_count(self):
         return self.articles.count()
 
@@ -50,6 +56,7 @@ class Professional(models.Model):
         if reviews:
             return sum(review.rating for review in reviews) / reviews.count()
         return 0
+
 
 class PortfolioItem(models.Model):
     professional = models.ForeignKey(Professional, on_delete=models.CASCADE, related_name='portfolio')
@@ -106,12 +113,19 @@ class Favorite(models.Model):
     class Meta:
         unique_together = ('user', 'professional')
 
+# In core/models.py
+
 class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    message = models.CharField(max_length=200)
-    link = models.URLField(blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    message = models.TextField()
+    # Add this field:
+    link = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+
+    def __str__(self):
+        # Optional: you could include the link in the string representation if helpful
+        return f"Notification for {self.user.username}: {self.message}"
 
 class ActivityLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -119,13 +133,21 @@ class ActivityLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
 
 class Job(models.Model):
-    client = models.ForeignKey(User, on_delete=models.CASCADE)
-    professional = models.ForeignKey(Professional, on_delete=models.CASCADE, null=True, blank=True)
-    title = models.CharField(max_length=200)
+    STATUS_CHOICES = (
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('completed', 'Completed'),
+    )
+    professional = models.ForeignKey(Professional, on_delete=models.CASCADE, related_name='jobs')
+    client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_jobs', null=True, blank=True)
+    title = models.CharField(max_length=100)
     description = models.TextField()
-    budget = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=[('open', 'Open'), ('in_progress', 'In Progress'), ('completed', 'Completed')], default='open')
+    budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
 
 
 class ProfessionalDetailView(DetailView):
@@ -140,3 +162,97 @@ class ProfessionalDetailView(DetailView):
             if not field.many_to_many and (not field.is_relation or field.one_to_one or hasattr(field, "field"))  # Key change
         ]
         return super().get_queryset().only(*field_names)
+    
+
+class UpgradeRequest(models.Model):
+    UPGRADE_TYPES = (
+        ('premium_profile', 'Premium Profile'),
+        ('featured_article', 'Featured Article'),
+        ('job_boost', 'Job Boost'),
+    )
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('rejected', 'Rejected'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='upgrade_requests')
+    upgrade_type = models.CharField(max_length=50, choices=UPGRADE_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_upgrade_type_display()} ({self.status})"
+    
+
+class FAQ(models.Model):
+    question = models.CharField(max_length=255)
+    answer = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.question
+
+class Feedback(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='feedbacks', null=True, blank=True)
+    message = models.TextField()
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Feedback from {self.user.username if self.user else 'Anonymous'}"
+    
+
+class CustomAdmin(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='custom_admin')
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Custom Admin: {self.user.username}"
+
+class AdminHelper(models.Model):
+    TASKS = (
+        ('upload_jobs', 'Upload Jobs'),
+        ('manage_users', 'Manage Users'),
+        ('verify_professionals', 'Verify Professionals'),
+        ('manage_articles', 'Manage Articles'),
+    )
+    custom_admin = models.ForeignKey(CustomAdmin, on_delete=models.CASCADE, related_name='helpers')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='helper_tasks')
+    task = models.CharField(max_length=50, choices=TASKS)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_task_display()}"
+    
+class JobDocument(models.Model):
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='documents')
+    document = models.FileField(upload_to='job_documents/')
+
+    def __str__(self):
+        return f"Document for {self.job.title}"
+    
+
+#For badges
+class Badge(models.Model):
+    TIER_CHOICES = (
+        ('verified_user', 'Verified User'),
+        ('verified_professional', 'Verified Professional'),
+        ('premium_user', 'Premium User'),
+        ('premium_professional', 'Premium Professional'),
+    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='badges')
+    tier = models.CharField(max_length=50, choices=TIER_CHOICES)
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_tier_display()}"
+    
+
+class VerificationToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    def __str__(self):
+        return f"Token for {self.user.username}"

@@ -1,0 +1,88 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Upgrade Your Experience{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <h1 class="fw-bold mb-4">Upgrade Your Experience</h1>
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Premium Profile</h5>
+                        <p class="text-muted">Get a verified badge, priority listing, and more visibility for $50.</p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="upgrade_type" value="premium_profile">
+                            <button type="submit" class="btn btn-primary btn-sm">Request Upgrade</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Featured Article</h5>
+                        <p class="text-muted">Promote your articles for $20 per article.</p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="upgrade_type" value="featured_article">
+                            <button type="submit" class="btn btn-primary btn-sm">Request Upgrade</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Job Boost</h5>
+                        <p class="text-muted">Boost your job postings for $30 per job.</p>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="upgrade_type" value="job_boost">
+                            <button type="submit" class="btn btn-primary btn-sm">Request Upgrade</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Instructions -->
+        <div class="card shadow-sm mb-5">
+            <div class="card-body">
+                <h4 class="card-title fw-bold mb-3">Offline Payment Instructions</h4>
+                <p class="text-muted">To complete your upgrade, please follow these steps:</p>
+                <ol>
+                    <li>Make a payment to the following bank account:</li>
+                    <ul>
+                        <li><strong>Bank:</strong> Example Bank</li>
+                        <li><strong>Account Name:</strong> mtaalamuX Payments</li>
+                        <li><strong>Account Number:</strong> 1234-5678-9012</li>
+                        <li><strong>Swift Code:</strong> EXBK123</li>
+                    </ul>
+                    <li>Include your username (<strong>{{ user.username }}</strong>) and upgrade type in the payment reference.</li>
+                    <li>Once the payment is made, our team will verify it within 1-2 business days.</li>
+                    <li>You will receive a notification once your upgrade is activated.</li>
+                </ol>
+                <p class="text-muted">For any issues, contact us at <a href="mailto:support@mtaalamux.com" class="text-primary">support@mtaalamux.com</a>.</p>
+            </div>
+        </div>
+
+        <!-- Upgrade Requests -->
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title fw-bold mb-3">Your Upgrade Requests</h4>
+                {% for request in upgrade_requests %}
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <p class="mb-0"><strong>{{ request.get_upgrade_type_display }}</strong></p>
+                            <p class="text-muted small">Requested on {{ request.requested_at|date:"F d, Y" }}</p>
+                        </div>
+                        <span class="badge bg-{% if request.status == 'pending' %}warning{% elif request.status == 'verified' %}success{% else %}danger{% endif %}">{{ request.status|title }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No upgrade requests yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

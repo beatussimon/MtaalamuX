@@ -1,0 +1,80 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Custom Admin Dashboard{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <h1 class="fw-bold mb-4">Custom Admin Dashboard</h1>
+        <div class="row g-4">
+            <div class="col-md-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Users</h5>
+                        <p class="display-6">{{ users.count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Professionals</h5>
+                        <p class="display-6">{{ professionals.count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Jobs</h5>
+                        <p class="display-6">{{ jobs.count }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Articles</h5>
+                        <p class="display-6">{{ articles.count }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-5">
+            <a href="{% url 'core:admin_upload_job' %}" class="btn btn-primary mb-3">Upload Job</a>
+            <a href="{% url 'core:assign_helper' %}" class="btn btn-secondary mb-3">Assign Helper</a>
+        </div>
+
+        <!-- Pending Verifications -->
+        <div class="card shadow-sm mt-5">
+            <div class="card-body">
+                <h4 class="card-title fw-bold mb-3">Pending Professional Verifications</h4>
+                {% for professional in professionals %}
+                    {% if not professional.is_verified %}
+                        <div class="mb-3">
+                            <h5 class="mb-1">{{ professional.user.username }} - {{ professional.field.name }} - {{ professional.subfield }}</h5>
+                            <p class="text-muted small">Location: {{ professional.location }}</p>
+                            <a href="{% url 'core:verify_professional' professional.id %}" class="btn btn-outline-primary btn-sm">Review</a>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <p class="text-muted">No pending verifications.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Helpers -->
+        <div class="card shadow-sm mt-5">
+            <div class="card-body">
+                <h4 class="card-title fw-bold mb-3">Assigned Helpers</h4>
+                {% for helper in helpers %}
+                    <div class="mb-3">
+                        <p class="mb-0">{{ helper.user.username }} - {{ helper.get_task_display }}</p>
+                    </div>
+                {% empty %}
+                    <p class="text-muted">No helpers assigned.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

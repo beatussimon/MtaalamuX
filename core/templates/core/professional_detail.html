@@ -32,8 +32,8 @@
                             <p><i class="fas fa-users me-1"></i> {{ professional.follower_count }} Followers</p>
                             <p><i class="fas fa-file-alt me-1"></i> {{ professional.post_count }} Posts</p>
                             <div class="d-flex flex-wrap gap-2 justify-content-center mb-3">
-                                {% for badge in professional.badges %}
-                                    <span class="badge bg-success">{{ badge }}</span>
+                                {% for badge in badges %}
+                                    <span class="badge {% if badge.tier == 'verified_user' %}bg-info{% elif badge.tier == 'verified_professional' %}bg-success{% elif badge.tier == 'premium_user' %}bg-warning{% else %}bg-primary{% endif %}">{{ badge.get_tier_display }}</span>
                                 {% empty %}
                                     <p class="text-muted small">No badges yet.</p>
                                 {% endfor %}

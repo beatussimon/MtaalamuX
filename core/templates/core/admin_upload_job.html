@@ -1,0 +1,55 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Upload Job{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <h1 class="fw-bold mb-4">Upload Job</h1>
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {% if form.errors %}
+                        <div class="alert alert-danger">
+                            <ul>
+                                {% for field, errors in form.errors.items %}
+                                    {% for error in errors %}
+                                        <li>{{ field }}: {{ error }}</li>
+                                    {% endfor %}
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="id_professional" class="form-label">Professional</label>
+                            {{ form.professional }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_title" class="form-label">Title</label>
+                            {{ form.title }}
+                        </div>
+                        <div class="col-12">
+                            <label for="id_description" class="form-label">Description</label>
+                            {{ form.description }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_budget" class="form-label">Budget</label>
+                            {{ form.budget }}
+                        </div>
+                        <div class="col-md-6">
+                            <label for="id_status" class="form-label">Status</label>
+                            {{ form.status }}
+                        </div>
+                        <div class="col-12">
+                            <label for="id_documents" class="form-label">Documents (optional)</label>
+                            <input type="file" name="documents" id="id_documents" class="form-control" multiple>
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary">Upload Job</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+{% endblock %}

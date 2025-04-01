@@ -2,13 +2,21 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q, Count  # Add Count for annotation
-from .models import Professional, Article, Message, UserProfile, Favorite, Comment, ServiceReview, Notification, ActivityLog, Job
+from django.db.models import Q #Count  # Add Count for annotation
+from .models import Professional, Article, Message, UserProfile, Favorite,UpgradeRequest, Comment,FAQ, Feedback, ServiceReview, Notification, ActivityLog, Job, Category, Badge, AdminHelper, JobDocument, VerificationToken
 from .forms import ProfessionalForm, PortfolioItemForm, MessageForm, ArticleForm, ServiceReviewForm, UserProfileForm, JobForm
 from django.contrib.auth.forms import UserCreationForm  # For signup
-from django.contrib.auth import login  # To log in the user after signup
+from django.contrib.auth import login, logout  # To log in the user after signup
 from django.contrib.auth.models import User  # For recipient lookup in messages view
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from django.urls import reverse
+from django.http import HttpResponseRedirect
+from django.contrib.auth.decorators import user_passes_test
+from django.db import models
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db.models import Q, Count, F, FloatField, Value, Avg
+from django.db.models.functions import Coalesce
 
 class ProfessionalListView(ListView):
     model = Professional
@@ -19,36 +27,84 @@ class ProfessionalListView(ListView):
     def get_queryset(self):
         queryset = Professional.objects.filter(is_verified=True)
         query = self.request.GET.get('q')
-        if query:
-            queryset = queryset.filter(
-                Q(field__icontains=query) | Q(subfield__icontains=query) | Q(location__icontains=query)
-            )
-            # Filter on the skills JSON field in Python
-            professionals = [
-                professional for professional in queryset
-                if any(query.lower() in skill.lower() for skill in professional.skills)
-            ]
-        else:
-            professionals = list(queryset)
-        # Annotate with follower_count and sort
-        for professional in professionals:
-            professional.follower_count = professional.followers.count()
-        return sorted(professionals, key=lambda x: x.follower_count, reverse=True)
+        category_name = self.request.GET.get('category') # Get category name from GET param
 
+        # --- Apply DB-level filters first ---
+        if category_name:
+             # Filter based on the Category's name through the foreign key
+            queryset = queryset.filter(field__name__iexact=category_name)
+
+        if query:
+            # Basic field/subfield/location search (using Category name for field search)
+            base_query_filter = Q(field__name__icontains=query) | Q(subfield__icontains=query) | Q(location__icontains=query)
+            queryset = queryset.filter(base_query_filter)
+            # Note: Skills filtering will happen AFTER annotation and fetching below
+
+        # --- Annotate the queryset ---
+        queryset = queryset.annotate(
+            # Annotate follower count
+            follower_count_annotated=Count('followers', distinct=True),
+            # Annotate average rating BY CALCULATING IT from related reviews
+            avg_rating_annotated=Coalesce(
+                Avg('reviews__rating'),     # Calculate Avg of the 'rating' field on related 'reviews'
+                Value(0.0),                 # If Avg returns None (no reviews), default to 0.0
+                output_field=FloatField()   # Specify the output field type
+            )
+        )
+
+        # --- Fetch annotated objects into a list ---
+        professionals_list = list(queryset) # Execute the query
+
+        # --- Python-level filtering for skills (if query exists) ---
+        if query:
+             professionals_list = [
+                 professional for professional in professionals_list
+                 if hasattr(professional, 'skills') and isinstance(professional.skills, (list, tuple))
+                 and any(query.lower() in str(skill).lower() for skill in professional.skills)
+             ]
+
+        # --- Calculate sort score in Python and sort ---
+        for professional in professionals_list:
+            follower_count = professional.follower_count_annotated
+            avg_rating = professional.avg_rating_annotated
+
+            professional._sort_score = (0.7 * follower_count) + (0.3 * avg_rating * 100)
+
+        # Sort the list by the temporary score
+        return sorted(professionals_list, key=lambda x: x._sort_score, reverse=True)
+
+    # --- get_context_data requires Category model for context ---
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Since get_queryset returns a list, we need to handle pagination manually
-        professionals = self.get_queryset()
+        # Get distinct category *names* for the filter dropdown
+        context['categories'] = Category.objects.filter(
+            professionals__is_verified=True # Only show categories with verified professionals
+        ).distinct().values_list('name', flat=True).order_by('name')
+
+        # Manual pagination (needed because get_queryset returns a list)
+        professionals_sorted = self.object_list # Get the sorted list from get_queryset
         page = self.request.GET.get('page', 1)
-        paginator = Paginator(professionals, self.paginate_by)
+        paginator = Paginator(professionals_sorted, self.paginate_by)
+
         try:
             professionals_paginated = paginator.page(page)
         except PageNotAnInteger:
             professionals_paginated = paginator.page(1)
         except EmptyPage:
             professionals_paginated = paginator.page(paginator.num_pages)
+
+        # Override context['professionals'] with the paginated list
         context['professionals'] = professionals_paginated
+        context['paginator'] = paginator
+        context['is_paginated'] = paginator.num_pages > 1
+        context['page_obj'] = professionals_paginated
+        # Use the category name for context
+        context['selected_category'] = self.request.GET.get('category', '')
+        context['query'] = self.request.GET.get('q', '')
         return context
+
+
+# In core/views.py
 
 class ProfessionalDetailView(DetailView):
     model = Professional
@@ -56,29 +112,73 @@ class ProfessionalDetailView(DetailView):
     context_object_name = 'professional'
 
     def get_queryset(self):
-        return Professional.objects.annotate(follower_count=Count('followers'))
+        # Keep this simple as fixed before
+        return Professional.objects.filter(is_verified=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['reviews'] = self.object.reviews.all()
         context['articles'] = self.object.articles.filter(is_published=True).order_by('-publish_date')[:5]
         context['is_following'] = self.request.user in self.object.followers.all() if self.request.user.is_authenticated else False
-        context['portfolio_items'] = self.object.portfolio_items.all()  # Adjust related_name as needed
+
+        # Use the correct related_name 'portfolio' here
+        context['portfolio_items'] = self.object.portfolio.all() # <-- CORRECTED
+
         context['jobs'] = Job.objects.filter(professional=self.object, status='completed')[:3]
+        context['badges'] = self.object.user.badges.all()
+        # context['follower_count_display'] = self.object.follower_count # Optional
+
         return context
-    
 class ArticleListView(ListView):
     model = Article
-    template_name = 'core/article_list.html'
+    template_name = 'core/home.html' # Assuming this maps to '/'
     context_object_name = 'articles'
-    paginate_by = 9
+    paginate_by = 10
 
     def get_queryset(self):
-        queryset = Article.objects.filter(is_published=True)
-        query = self.request.GET.get('q')
-        if query:
-            queryset = queryset.filter(Q(title__icontains=query) | Q(content__icontains=query))
-        return queryset.order_by('-publish_date')
+        # This is the main query for articles on the home page
+        return Article.objects.filter(is_published=True).order_by('-publish_date')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # --- Get Top Professionals (using the correct annotation pattern) ---
+        # Start with the base queryset for verified professionals
+        professionals_qs = Professional.objects.filter(is_verified=True)
+
+        # Annotate with follower count and average rating using DB functions
+        professionals_qs = professionals_qs.annotate(
+            follower_count_annotated=Count('followers', distinct=True),
+            avg_rating_annotated=Coalesce(
+                Avg('reviews__rating'),     # Calculate Avg rating from related ServiceReviews
+                Value(0.0),                 # Default to 0.0 if no reviews
+                output_field=FloatField()
+            )
+        )
+
+        # Fetch the annotated professionals into a Python list
+        professionals_list = list(professionals_qs)
+
+        # Calculate sort score in Python using the annotated values
+        for professional in professionals_list:
+            # Access the annotated values calculated by the database
+            follower_count = professional.follower_count_annotated
+            avg_rating = professional.avg_rating_annotated
+            # Store the calculated score on a temporary attribute (e.g., _sort_score)
+            professional._sort_score = (0.7 * follower_count) + (0.3 * avg_rating * 100)
+
+        # Sort the list in Python based on the temporary score and take top 6
+        context['top_professionals'] = sorted(
+            professionals_list,
+            key=lambda x: getattr(x, '_sort_score', 0), # Use getattr for safety
+            reverse=True
+        )[:6]
+
+        # --- Recent jobs ---
+        context['recent_jobs'] = Job.objects.filter(status='open').order_by('-created_at')[:5]
+
+        return context
+
 
 class ArticleDetailView(DetailView):
     model = Article
@@ -159,13 +259,24 @@ def setup_profile(request):
 
 @login_required
 def become_professional(request):
-    profile = UserProfile.objects.get(user=request.user)
-    if request.method == 'POST' and not profile.is_professional:
-        profile.is_professional = True
-        profile.save()
-        ActivityLog.objects.create(user=request.user, action="Became a professional")
-        return redirect('core:setup_profile')
-    return render(request, 'core/become_professional.html')
+    if hasattr(request.user, 'professional'):
+        return redirect('core:user_profile')
+
+    if request.method == 'POST':
+        form = ProfessionalForm(request.POST, request.FILES)
+        if form.is_valid():
+            professional = form.save(commit=False)
+            professional.user = request.user
+            professional.is_verified = False
+            professional.save()
+            Notification.objects.create(
+                user=request.user,
+                message="Your professional profile has been submitted for verification."
+            )
+            return redirect('core:user_profile')
+    else:
+        form = ProfessionalForm()
+    return render(request, 'core/become_professional.html', {'form': form})
 
 @login_required
 def add_portfolio(request):
@@ -282,3 +393,329 @@ def signup(request):
     else:
         form = UserCreationForm()
     return render(request, 'core/signup.html', {'form': form})
+
+def logout_view(request):
+    logout(request)
+    return HttpResponseRedirect(reverse('home'))
+
+
+@login_required
+def user_profile(request):
+    user = request.user
+    try:
+        professional = user.professional
+    except Professional.DoesNotExist:
+        professional = None
+
+    try:
+        user_profile = user.userprofile
+    except UserProfile.DoesNotExist:
+        user_profile = None
+
+    if request.method == 'POST':
+        user_form = UserProfileForm(request.POST, request.FILES, instance=user_profile)
+        if professional:
+            professional_form = ProfessionalForm(request.POST, request.FILES, instance=professional)
+        else:
+            professional_form = ProfessionalForm(request.POST, request.FILES)
+
+        if user_form.is_valid() and (not professional or professional_form.is_valid()):
+            user_profile = user_form.save(commit=False)
+            user_profile.user = user
+            user_profile.save()
+
+            if professional_form:
+                professional = professional_form.save(commit=False)
+                professional.user = user
+                professional.save()
+
+            return redirect('core:user_profile')
+    else:
+        user_form = UserProfileForm(instance=user_profile)
+        professional_form = ProfessionalForm(instance=professional) if professional else ProfessionalForm()
+
+    return render(request, 'core/user_profile.html', {
+        'user_form': user_form,
+        'professional_form': professional_form,
+        'professional': professional,
+        'user_profile': user_profile,
+    })
+
+class JobListView(ListView):
+    model = Job
+    template_name = 'core/job_list.html'
+    context_object_name = 'jobs'
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = Job.objects.filter(status='open').select_related('professional').prefetch_related('documents')
+        query = self.request.GET.get('q')
+        category = self.request.GET.get('category')
+        location = self.request.GET.get('location')
+        budget = self.request.GET.get('budget')
+
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query) | Q(description__icontains=query) | Q(professional__field__name__icontains=query)
+            )
+        if category:
+            queryset = queryset.filter(professional__field__name__iexact=category)
+        if location:
+            queryset = queryset.filter(professional__location__icontains=location)
+        if budget:
+            try:
+                budget_value = float(budget)
+                queryset = queryset.filter(budget__lte=budget_value)
+            except ValueError:
+                pass
+
+        return queryset.order_by('-created_at')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        jobs = self.get_queryset()
+        page = self.request.GET.get('page', 1)
+        paginator = Paginator(jobs, self.paginate_by)
+        try:
+            jobs_paginated = paginator.page(page)
+        except PageNotAnInteger:
+            jobs_paginated = paginator.page(1)
+        except EmptyPage:
+            jobs_paginated = paginator.page(paginator.num_pages)
+        context['jobs'] = jobs_paginated
+        context['categories'] = Category.objects.all()
+        return context
+    
+
+class JobDetailView(DetailView):
+    model = Job
+    template_name = 'core/job_detail.html'
+    context_object_name = 'job'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['can_apply'] = self.request.user.is_authenticated and self.request.user != self.object.professional.user
+        if self.request.user.is_authenticated:
+            context['has_applied'] = Message.objects.filter(
+                sender=self.request.user,
+                recipient=self.object.professional.user,
+                content__contains=f"I'm interested in your job posting: {self.object.title}"
+            ).exists()
+        context['documents'] = self.object.documents.all()
+        return context
+
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        if request.user.is_authenticated and request.user != self.object.professional.user:
+            message_content = f"I'm interested in your job posting: {self.object.title}"
+            Message.objects.create(
+                sender=request.user,
+                recipient=self.object.professional.user,
+                content=message_content
+            )
+            Notification.objects.create(
+                user=self.object.professional.user,
+                message=f"{request.user.username} has applied for your job: {self.object.title}"
+            )
+            Notification.objects.create(
+                user=request.user,
+                message=f"You have applied for the job: {self.object.title}"
+            )
+        return redirect('core:job_detail', pk=self.object.id)
+
+
+def faq(request):
+    faqs = FAQ.objects.all()
+    return render(request, 'core/faq.html', {'faqs': faqs})
+
+def feedback(request):
+    if request.method == 'POST':
+        message = request.POST.get('message')
+        if message:
+            Feedback.objects.create(
+                user=request.user if request.user.is_authenticated else None,
+                message=message
+            )
+            return redirect('core:feedback')
+    feedbacks = Feedback.objects.filter(user=request.user) if request.user.is_authenticated else []
+    return render(request, 'core/feedback.html', {'feedbacks': feedbacks})
+
+@login_required
+def notifications(request):
+    notifications = request.user.notifications.all().order_by('-created_at')
+    # Mark notifications as read when viewed
+    if notifications:
+        notifications.update(is_read=True)
+    return render(request, 'core/notifications.html', {'notifications': notifications})
+
+#For teh admin dashboard
+
+def custom_admin_required(view_func):
+    def check_custom_admin(user):
+        return user.is_authenticated and hasattr(user, 'custom_admin') and user.custom_admin.is_active
+    return user_passes_test(check_custom_admin)(view_func)
+
+@custom_admin_required
+def custom_admin_dashboard(request):
+    professionals = Professional.objects.all()
+    jobs = Job.objects.all()
+    articles = Article.objects.all()
+    users = User.objects.all()
+    helpers = AdminHelper.objects.filter(custom_admin=request.user.custom_admin)
+
+    context = {
+        'professionals': professionals,
+        'jobs': jobs,
+        'articles': articles,
+        'users': users,
+        'helpers': helpers,
+    }
+    return render(request, 'core/custom_admin_dashboard.html', context)
+
+@custom_admin_required
+def assign_helper(request):
+    if request.method == 'POST':
+        user_id = request.POST.get('user')
+        task = request.POST.get('task')
+        user = get_object_or_404(User, id=user_id)
+        AdminHelper.objects.create(
+            custom_admin=request.user.custom_admin,
+            user=user,
+            task=task
+        )
+        return redirect('core:custom_admin_dashboard')
+    users = User.objects.exclude(id=request.user.id)
+    return render(request, 'core/assign_helper.html', {'users': users})
+
+@custom_admin_required
+def admin_upload_job(request):
+    if request.method == 'POST':
+        form = JobForm(request.POST, request.FILES)
+        if form.is_valid():
+            job = form.save(commit=False)
+            job.professional = form.cleaned_data['professional']
+            job.save()
+            # Save documents if provided
+            documents = request.FILES.getlist('documents')
+            for doc in documents:
+                JobDocument.objects.create(job=job, document=doc)
+            return redirect('core:custom_admin_dashboard')
+    else:
+        form = JobForm()
+    return render(request, 'core/admin_upload_job.html', {'form': form})
+
+@custom_admin_required
+def verify_professional(request, professional_id):
+    professional = get_object_or_404(Professional, id=professional_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            professional.is_verified = True
+            professional.save()
+            # Award badge
+            Badge.objects.get_or_create(user=professional.user, tier='verified_professional')
+            Notification.objects.create(
+                user=professional.user,
+                message="Your professional profile has been verified! You have earned the 'Verified Professional' badge."
+            )
+        elif action == 'reject':
+            professional.delete()
+            Notification.objects.create(
+                user=professional.user,
+                message="Your professional profile verification was rejected."
+            )
+        return redirect('core:custom_admin_dashboard')
+    return render(request, 'core/verify_professional.html', {'professional': professional})
+
+@login_required
+def upgrade(request):
+    if request.method == 'POST':
+        upgrade_type = request.POST.get('upgrade_type')
+        upgrade_request = UpgradeRequest.objects.create(
+            user=request.user,
+            upgrade_type=upgrade_type,
+            status='pending'
+        )
+        Notification.objects.create(
+            user=request.user,
+            message=f"Your {upgrade_request.get_upgrade_type_display()} request has been submitted. Please follow the payment instructions."
+        )
+        return redirect('core:upgrade')
+    upgrade_requests = UpgradeRequest.objects.filter(user=request.user).order_by('-requested_at')
+    return render(request, 'core/upgrade.html', {'upgrade_requests': upgrade_requests})
+
+@custom_admin_required
+def verify_upgrade(request, upgrade_id):
+    upgrade_request = get_object_or_404(UpgradeRequest, id=upgrade_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            upgrade_request.status = 'verified'
+            upgrade_request.save()
+            # Award badge based on upgrade type
+            if upgrade_request.upgrade_type == 'premium_profile':
+                tier = 'premium_professional' if hasattr(upgrade_request.user, 'professional') else 'premium_user'
+            elif upgrade_request.upgrade_type == 'featured_article':
+                tier = 'premium_user'
+            elif upgrade_request.upgrade_type == 'job_boost':
+                tier = 'premium_user'
+            Badge.objects.get_or_create(user=upgrade_request.user, tier=tier)
+            Notification.objects.create(
+                user=upgrade_request.user,
+                message=f"Your {upgrade_request.get_upgrade_type_display()} has been verified! You have earned the '{tier.replace('_', ' ').title()}' badge."
+            )
+        elif action == 'reject':
+            upgrade_request.status = 'rejected'
+            upgrade_request.save()
+            Notification.objects.create(
+                user=upgrade_request.user,
+                message=f"Your {upgrade_request.get_upgrade_type_display()} request was rejected."
+            )
+        return redirect('core:custom_admin_dashboard')
+    return render(request, 'core/verify_upgrade.html', {'upgrade_request': upgrade_request})
+
+
+
+
+#Additions for dignup 
+
+
+def signup(request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            # Create a verification token
+            token = VerificationToken.objects.create(user=user)
+            # Send verification email
+            verification_url = request.build_absolute_uri(
+                reverse('core:verify_email', kwargs={'token': str(token.token)})
+            )
+            send_mail(
+                'Verify Your Email - mtaalamuX',
+                f'Please click the following link to verify your email: {verification_url}',
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            login(request, user)
+            return redirect('core:setup_profile')
+    else:
+        form = UserCreationForm()
+    return render(request, 'core/signup.html', {'form': form})
+
+def verify_email(request, token):
+    try:
+        verification_token = VerificationToken.objects.get(token=token)
+        user = verification_token.user
+        # Award Verified User badge
+        Badge.objects.get_or_create(user=user, tier='verified_user')
+        Notification.objects.create(
+            user=user,
+            message="Your email has been verified! You have earned the 'Verified User' badge."
+        )
+        verification_token.delete()
+        return redirect('core:user_profile')
+    except VerificationToken.DoesNotExist:
+        return render(request, 'core/error.html', {'message': 'Invalid or expired verification token.'})
+    

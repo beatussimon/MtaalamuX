@@ -20,7 +20,7 @@
                     <ul class="list-group">
                         {% for msg in sent %}
                             <li class="list-group-item">
-                                <a href="{% url 'messages_with' msg.recipient.id %}" class="text-decoration-none">To {{ msg.recipient.username }}: {{ msg.content|truncatewords:10 }}</a>
+                                <a href="{% url 'core:messages_with' msg.recipient.id %}" class="text-decoration-none">To {{ msg.recipient.username }}: {{ msg.content|truncatewords:10 }}</a>
                             </li>
                         {% empty %}
                             <li class="list-group-item text-muted">No messages</li>

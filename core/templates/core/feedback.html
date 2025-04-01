@@ -1,0 +1,45 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}Feedback{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <h1 class="fw-bold mb-4">We Value Your Feedback</h1>
+        <div class="row g-5">
+            <!-- Feedback Form -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h4 class="card-title fw-bold mb-3">Submit Feedback</h4>
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="id_message" class="form-label">Your Feedback</label>
+                                <textarea name="message" id="id_message" class="form-control" rows="5" placeholder="Share your thoughts, suggestions, or issues..." required></textarea>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Submit</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previous Feedback -->
+            <div class="col-lg-6">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h4 class="card-title fw-bold mb-3">Your Previous Feedback</h4>
+                        {% for feedback in feedbacks %}
+                            <div class="mb-3">
+                                <p class="text-muted small">Submitted on {{ feedback.submitted_at|date:"F d, Y" }}</p>
+                                <p>{{ feedback.message|linebreaks }}</p>
+                            </div>
+                        {% empty %}
+                            <p class="text-muted">No feedback submitted yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

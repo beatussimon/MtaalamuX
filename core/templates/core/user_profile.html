@@ -1,0 +1,84 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block title %}My Profile{% endblock %}
+{% block content %}
+    <div class="container my-5">
+        <div class="row g-5">
+            <!-- Profile Overview -->
+            <div class="col-lg-4">
+                <div class="card shadow-sm sticky-top" style="top: 20px;">
+                    <div class="card-body text-center">
+                        <img src="{% if user_profile.avatar %}{{ user_profile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ user.username }}'s avatar" style="width: 150px; height: 150px; object-fit: cover;">
+                        <h3 class="card-title">{{ user.username }}</h3>
+                        {% if professional %}
+                            <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
+                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1 }} ({{ professional.reviews.count }})</p>
+                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count }} Followers</p>
+                            <a href="{% url 'core:professional_detail' professional.id %}" class="btn btn-outline-primary btn-sm mt-3">View Public Profile</a>
+                        {% else %}
+                            <p class="text-muted">Not a professional yet.</p>
+                            <a href="{% url 'core:become_professional' %}" class="btn btn-primary btn-sm mt-3">Become a Professional</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Profile -->
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h4 class="card-title fw-bold mb-4">Edit Profile</h4>
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <h5 class="fw-bold mb-3">User Profile</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="id_avatar" class="form-label">Avatar</label>
+                                    {{ user_form.avatar }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="id_bio" class="form-label">Bio</label>
+                                    {{ user_form.bio }}
+                                </div>
+                            </div>
+
+                            {% if professional %}
+                                <h5 class="fw-bold mt-4 mb-3">Professional Details</h5>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="id_field" class="form-label">Field</label>
+                                        {{ professional_form.field }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_subfield" class="form-label">Subfield</label>
+                                        {{ professional_form.subfield }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_location" class="form-label">Location</label>
+                                        {{ professional_form.location }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_skills" class="form-label">Skills (comma-separated)</label>
+                                        <input type="text" name="skills" id="id_skills" class="form-control" value="{{ professional.skills|join:',' }}" placeholder="e.g., Python,Django,JavaScript">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="id_photo" class="form-label">Professional Photo</label>
+                                        {{ professional_form.photo }}
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="id_bio" class="form-label">Professional Bio</label>
+                                        {{ professional_form.bio }}
+                                    </div>
+                                </div>
+                            {% endif %}
+
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

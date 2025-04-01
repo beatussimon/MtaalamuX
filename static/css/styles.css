@@ -24,16 +24,40 @@
 }
 
 /* General Styles */
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
 body {
+    display: flex;
+    flex-direction: column;
     font-family: 'Poppins', sans-serif;
     background-color: var(--background-light);
     color: var(--text-light);
     transition: background-color 0.3s, color 0.3s;
 }
 
+.content-wrapper {
+    flex: 1 0 auto;
+}
+
+footer {
+    flex-shrink: 0;
+    background: linear-gradient(90deg, var(--background-dark), #16213e);
+    color: var(--text-dark);
+}
+
+footer .small {
+    font-size: 0.875rem;
+}
+
+.social-links i {
+    font-size: 1.25rem;
+}
+
 .bg-gradient {
     background: linear-gradient(90deg, var(--primary), var(--secondary));
-    background: -webkit-linear-gradient(90deg, var(--primary), var(--secondary));
 }
 
 .navbar {
@@ -44,7 +68,6 @@ body {
 
 .navbar.bg-gradient {
     background: linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
-    background: -webkit-linear-gradient(90deg, var(--navbar-dark), var(--navbar-dark-gradient));
 }
 
 .navbar-brand {
@@ -78,7 +101,6 @@ body {
 
 .btn-primary {
     background: linear-gradient(90deg, var(--primary), var(--secondary));
-    background: -webkit-linear-gradient(90deg, var(--primary), var(--secondary));
     border: none;
     border-radius: 25px;
     padding: 0.75rem 1.5rem;
@@ -87,14 +109,13 @@ body {
 
 .btn-primary:hover {
     background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
-    background: -webkit-linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
 }
 
 .hero-section {
     padding: 4rem 0;
     background: linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
-    background: -webkit-linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
     border-radius: 20px;
+    min-height: 300px;
 }
 
 .chat-box {
@@ -111,19 +132,13 @@ body {
     border-radius: 4px;
 }
 
-footer {
-    background: linear-gradient(90deg, var(--background-dark), #16213e);
-    background: -webkit-linear-gradient(90deg, var(--background-dark), #16213e);
-}
-
 /* Article Detail Page Styling */
 .article-hero {
-    margin-top: -20px; /* Adjust for navbar overlap */
+    margin-top: -20px;
 }
 
 .article-hero-overlay {
     background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-    background: -webkit-linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
 }
 
 .article-content {
@@ -137,6 +152,7 @@ footer {
 
 .article-stats span {
     font-size: 0.9rem;
+    color: var(--muted-light);
 }
 
 .btn-action {
@@ -186,12 +202,11 @@ footer {
 
 /* Professional Detail Page Styling */
 .professional-hero {
-    margin-top: -20px; /* Adjust for navbar overlap */
+    margin-top: -20px;
 }
 
 .professional-hero-overlay {
     background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-    background: -webkit-linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
 }
 
 .review {
@@ -217,31 +232,25 @@ footer {
     color: var(--text-dark);
 }
 
-.dark-mode .card {
+.dark-mode .card,
+.dark-mode .floating-action-bar {
     background-color: var(--card-dark);
 }
 
 .dark-mode .text-dark,
 .dark-mode .card-title,
-.dark-mode h6 a {
+.dark-mode h6 a,
+.dark-mode .article-body p {
     color: var(--text-dark);
 }
 
-.dark-mode .text-muted {
+.dark-mode .text-muted,
+.dark-mode .article-stats span {
     color: var(--muted-dark);
 }
 
 .dark-mode .article-content {
     background-color: var(--card-dark);
-    color: var(--text-dark);
-}
-
-.dark-mode .article-body p {
-    color: var(--text-dark);
-}
-
-.dark-mode .article-stats span {
-    color: var(--muted-dark);
 }
 
 .dark-mode .comments-section .comment:hover,
@@ -249,11 +258,9 @@ footer {
     background-color: #3a3f44;
 }
 
-.dark-mode .floating-action-bar {
-    background-color: var(--card-dark);
+.dark-mode .hero-section {
+    background: linear-gradient(135deg, rgba(var(--primary), 0.2), rgba(var(--secondary), 0.2));
 }
-
-
 
 /* Additional Professional Detail Page Styling */
 .card-body {
@@ -279,11 +286,119 @@ footer {
     border-radius: 20px;
 }
 
-/* Dark Mode Adjustments */
-.dark-mode .badge.bg-primary {
-    background-color: var(--primary) !important;
+/* Category Scroll Container */
+.category-scroll-container {
+    overflow-x: hidden;
 }
 
-.dark-mode .badge.bg-success {
-    background-color: #28a745 !important;
+.category-scroll {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+
+.category-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.category-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 4px;
+}
+
+.category-circle {
+    display: inline-block;
+    width: 80px;
+}
+
+.category-circle .circle {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+.category-circle:hover .circle {
+    transform: scale(1.1);
+}
+
+.category-circle.active .circle {
+    background-color: var(--secondary) !important;
+}
+
+/* Professional Card */
+.professional-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.professional-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Homepage Styling */
+.job-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.job-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Form Styling */
+.form-label {
+    font-weight: 500;
+}
+
+.form-control, .form-control-file {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 5px rgba(var(--primary), 0.3);
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+
+
+
+
+.category-scroll-container {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on mobile */
+    scrollbar-width: thin; /* Thinner scrollbar for Firefox */
+    scrollbar-color: #888 #f1f1f1; /* Custom scrollbar colors */
+}
+
+/* Hide scrollbar on Webkit browsers (Chrome, Safari) but keep it functional */
+.category-scroll-container::-webkit-scrollbar {
+    height: 8px;
+}
+.category-scroll-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+.category-scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.category-circle .circle {
+    width: 50px;
+    height: 50px;
+    font-size: 1.5rem;
+}
+
+/* Ensure the first and last items don’t touch the edges */
+.category-scroll {
+    padding-left: 10px;
+    padding-right: 10px;
 }

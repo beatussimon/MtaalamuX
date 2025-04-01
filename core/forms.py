@@ -1,21 +1,71 @@
 from django import forms
-from .models import Professional, PortfolioItem, Message, Article, ServiceReview, UserProfile, Job
+from .models import Professional, PortfolioItem, Message, Article, ServiceReview, UserProfile, Job, Category
 
 class UserProfileForm(forms.ModelForm):
     class Meta:
         model = UserProfile
         fields = ['bio', 'avatar', 'interests', 'theme']
 
+from django.core.validators import FileExtensionValidator
+
 class ProfessionalForm(forms.ModelForm):
-    skills = forms.CharField(widget=forms.TextInput(attrs={'placeholder': 'e.g., Python, Django'}), required=False)
+    skills = forms.CharField(
+        widget=forms.TextInput(attrs={'placeholder': 'e.g., Python,Django,JavaScript'}),
+        required=False,
+        help_text="Enter skills as a comma-separated list."
+    )
+    new_field = forms.CharField(
+        label="New Field (if not in list)",
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': 'Enter a new field if not listed'})
+    )
+    cv = forms.FileField(
+        validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
+        required=True
+    )
+    certificates = forms.FileField(
+        validators=[FileExtensionValidator(allowed_extensions=['pdf'])],
+        required=True
+    )
 
     class Meta:
         model = Professional
-        fields = ['field', 'subfield', 'location', 'bio', 'photo', 'credentials_file', 'social_links', 'availability', 'rate']
+        fields = [
+            'field', 'new_field', 'subfield', 'location', 'skills', 'photo', 'bio',
+            'linkedin_url', 'twitter_url', 'github_url', 'website_url',
+            'cv', 'certificates'
+        ]
+        widgets = {
+            'bio': forms.Textarea(attrs={'rows': 5}),
+            'field': forms.Select(choices=[]),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['field'].choices = [(None, 'Select a field')] + [(category.id, category.name) for category in Category.objects.all()]
+        self.fields['field'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        field = cleaned_data.get('field')
+        new_field = cleaned_data.get('new_field')
+
+        if not field and not new_field:
+            raise forms.ValidationError("Please select a field or enter a new one.")
+        if field and new_field:
+            raise forms.ValidationError("Please either select a field or enter a new one, not both.")
+
+        if new_field:
+            category, created = Category.objects.get_or_create(name=new_field.strip())
+            cleaned_data['field'] = category
+
+        return cleaned_data
 
     def clean_skills(self):
         skills = self.cleaned_data.get('skills')
-        return [skill.strip() for skill in skills.split(',')] if skills else []
+        if skills:
+            return [skill.strip() for skill in skills.split(',') if skill.strip()]
+        return []
 
 class PortfolioItemForm(forms.ModelForm):
     class Meta:
@@ -40,4 +90,7 @@ class ServiceReviewForm(forms.ModelForm):
 class JobForm(forms.ModelForm):
     class Meta:
         model = Job
-        fields = ['title', 'description', 'budget']
+        fields = ['professional', 'title', 'description', 'budget', 'status']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 5}),
+        }

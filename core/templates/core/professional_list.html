@@ -1,54 +1,86 @@
 {% extends 'core/base.html' %}
-{% block title %}Find Experts{% endblock %}
+{% load static %}
+{% block title %}Find Your Perfect Expert{% endblock %}
 {% block content %}
-    <div class="hero-section text-center mb-5">
-        <h1 class="display-4 fw-bold">Find Your Perfect Expert</h1>
-        <p class="lead text-muted">Connect with top professionals across all fields.</p>
-        <form method="get" class="input-group w-50 mx-auto mt-4">
-            <input type="text" name="q" class="form-control rounded-start" placeholder="Search by field, skill, or location..." value="{{ request.GET.q }}">
-            <button type="submit" class="btn btn-primary rounded-end"><i class="fas fa-search"></i> Search</button>
-        </form>
-    </div>
-    <div class="row g-4">
-        {% for pro in professionals %}
-            <div class="col-md-4">
-                <div class="card h-100 shadow-sm hover-shadow">
-                    <img src="{{ pro.photo.url }}" class="card-img-top rounded-top" alt="Profile" style="height: 200px; object-fit: cover;">
-                    <div class="card-body">
-                        <h5 class="card-title"><a href="{% url 'professional_detail' pro.id %}" class="text-decoration-none">{{ pro.field }} - {{ pro.subfield }}</a></h5>
-                        <p class="card-text text-muted">{{ pro.bio|truncatewords:15 }}</p>
-                        <p><i class="fas fa-map-marker-alt"></i> {{ pro.location }}</p>
-                        <p><i class="fas fa-star text-warning"></i> {{ pro.average_rating|floatformat:1 }} ({{ pro.reviews.count }})</p>
-                        <p><i class="fas fa-users"></i> {{ pro.follower_count }} Followers</p>
-                        <div class="d-flex gap-2">
-                            {% for badge in pro.badges %}
-                                <span class="badge bg-success">{{ badge }}</span>
-                            {% endfor %}
-                            {% if pro.is_verified %}<span class="badge bg-primary"><i class="fas fa-check"></i> Verified</span>{% endif %}
-                        </div>
-                    </div>
-                    <div class="card-footer bg-transparent border-0">
-                        <a href="{% url 'professional_detail' pro.id %}" class="btn btn-outline-primary w-100">View Profile</a>
-                    </div>
+
+<!-- Category Circles -->
+<div class="category-scroll-container mb-5 px-3 px-md-5">
+    <div class="category-scroll d-flex gap-3 pb-3">
+        {% for category in categories %}
+            <a href="{% url 'core:professional_list' %}?category={{ category|urlencode }}" class="category-circle text-decoration-none text-center {% if selected_category == category %}active{% endif %}">
+                <div class="circle bg-primary text-white d-flex align-items-center justify-content-center rounded-circle">
+                    {{ category|truncatechars:1 }}
                 </div>
-            </div>
+                <p class="text-dark small mt-2">{{ category }}</p>
+            </a>
         {% empty %}
-            <div class="col-12 text-center py-5"><p class="text-muted">No experts found. Try a different search.</p></div>
+            <p class="text-muted">No categories available.</p>
         {% endfor %}
     </div>
-    {% if is_paginated %}
-        <nav aria-label="Page navigation" class="mt-5">
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">«</a></li>
-                {% endif %}
-                {% for num in page_obj.paginator.page_range %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %}"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
-                {% endfor %}
-                {% if page_obj.has_next %}
-                    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">»</a></li>
-                {% endif %}
-            </ul>
-        </nav>
-    {% endif %}
+</div>
+
+    <!-- Search Bar -->
+    <div class="container mb-5">
+        <form method="get" class="row justify-content-center">
+            <div class="col-12 col-md-6">
+                <div class="input-group">
+                    <input type="text" name="q" class="form-control rounded-pill" placeholder="Search experts by field, subfield, location, or skills..." value="{{ request.GET.q|default:'' }}">
+                    <button type="submit" class="btn btn-primary rounded-pill">
+                        <i class="fas fa-search"></i> <span class="d-none d-md-inline">Search</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Professional Cards -->
+    <div class="container">
+        <div class="row g-4">
+            {% for professional in professionals %}
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card shadow-sm professional-card">
+                        <div class="card-body text-center">
+                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                            <h5 class="card-title"><a href="{% url 'core:professional_detail' professional.id %}" class="text-dark text-decoration-none">{{ professional.user.username }}</a></h5>
+                            <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
+                            <p class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i> {{ professional.location }}</p>
+                            <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1|default:"N/A" }} ({{ professional.reviews.count|default:0 }})</p>
+                            <p><i class="fas fa-users me-1"></i> {{ professional.follower_count|default:0 }} Followers</p>
+                            <a href="{% url 'core:professional_detail' professional.id %}" class="btn btn-outline-primary btn-sm">View Profile</a>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center">
+                    <p class="text-muted">No professionals found. Try adjusting your search or category.</p>
+                </div>
+            {% endfor %}
+        </div>
+        <!-- Pagination -->
+        {% if professionals.paginator.num_pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-5">
+                <ul class="pagination justify-content-center">
+                    {% if professionals.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ professionals.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                    {% for num in professionals.paginator.page_range %}
+                        <li class="page-item {% if professionals.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if professionals.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ professionals.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}" aria-label="Next">
+                                <span aria-hidden="true">»</span>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
 {% endblock %}
