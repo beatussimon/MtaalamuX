@@ -1,40 +1,145 @@
-{% extends 'base.html' %}
+{% extends 'core/base.html' %}
 {% load static %}
 
 {% block title %}Insights - mtaalamuX{% endblock %}
 
+{% block extra_head %}
+    <style>
+        .featured-card {
+            border-radius: 20px;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        .featured-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+        .featured-card img {
+            height: 300px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        .featured-card:hover img {
+            transform: scale(1.05);
+        }
+        .article-card {
+            border-radius: 15px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+        .article-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+        .article-card img {
+            height: 180px;
+            object-fit: cover;
+        }
+        .section-header {
+            font-weight: 600;
+            color: var(--text-light);
+        }
+        .dark-mode .section-header {
+            color: var(--text-dark);
+        }
+        .filter-form {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+    </style>
+{% endblock %}
+
 {% block content %}
     <div class="container my-5">
-        <h1 class="text-center mb-4">Insights</h1>
-        <p class="text-center text-muted mb-5">Explore the latest articles from our experts.</p>
+        <!-- Header -->
+        <h1 class="text-center mb-3">Insights</h1>
+        <p class="text-center text-muted mb-4">Discover expert articles, from top highlights to the latest insights.</p>
 
-        {% if articles %}
-            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-                {% for article in articles %}
-                    <div class="col">
-                        <div class="card h-100">
-                            {% if article.image %}
-                                <img src="{{ article.image.url }}" class="card-img-top" alt="{{ article.title }}" style="height: 200px; object-fit: cover;">
-                            {% else %}
-                                <img src="{% static 'img/default_article.jpg' %}" class="card-img-top" alt="Default Article Image" style="height: 200px; object-fit: cover;">
-                            {% endif %}
-                            <div class="card-body">
-                                <h5 class="card-title">{{ article.title }}</h5>
-                                <p class="card-text">{{ article.excerpt|truncatewords:20 }}</p>
-                                <div class="article-stats mb-2">
-                                    <span><i class="fas fa-user me-1"></i>{{ article.author }}</span>
-                                    <span class="ms-3"><i class="fas fa-calendar-alt me-1"></i>{{ article.created_at|date:"M d, Y" }}</span>
+        <!-- Search and Filter Form -->
+        <form method="GET" action="{% url 'core:insights' %}" class="filter-form d-flex flex-column flex-md-row gap-3">
+            <div class="flex-grow-1">
+                <input type="text" name="q" class="form-control" placeholder="Search articles..." value="{{ request.GET.q }}" aria-label="Search articles">
+            </div>
+            <div>
+                <select name="category" class="form-select" aria-label="Filter by category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if request.GET.category == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+
+        <!-- Featured Articles Section -->
+        <section class="mb-5">
+            <h2 class="section-header mb-4">Featured Articles</h2>
+            {% if featured_articles %}
+                <div class="row g-4">
+                    {% for article in featured_articles %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card featured-card h-100">
+                                {% if article.image %}
+                                    <img src="{{ article.image.url }}" class="card-img-top" alt="{{ article.title|escape }}">
+                                {% else %}
+                                    <img src="{% static 'img/default_article.jpg' %}" class="card-img-top" alt="Default Article Image">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h3 class="card-title">{{ article.title|truncatechars:50 }}</h3>
+                                    <p class="card-text">{{ article.content|truncatewords:25 }}</p>
+                                    <div class="article-stats mb-2 text-muted">
+                                        <span><i class="fas fa-user me-1"></i>{{ article.author }}</span>
+                                        <span class="ms-3"><i class="fas fa-calendar-alt me-1"></i>{{ article.publish_date|date:"M d, Y" }}</span>
+                                        <span class="ms-3"><i class="fas fa-thumbs-up me-1"></i>{{ article.likes }}</span>
+                                    </div>
+                                    <a href="{% url 'core:article_detail' article.id %}" class="stretched-link"></a>
                                 </div>
-                                <a href="{% url 'core:article_detail' article.id %}" class="btn btn-primary btn-sm">Read More</a>
                             </div>
                         </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center">
-                <p class="text-muted">No articles available yet. Check back soon!</p>
-            </div>
-        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted">
+                    <p>No featured articles match your criteria. Try adjusting your filters!</p>
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- All Articles Section -->
+        <section>
+            <h2 class="section-header mb-4">All Articles</h2>
+            {% if all_articles %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for article in all_articles %}
+                        <div class="col">
+                            <div class="card article-card h-100">
+                                {% if article.image %}
+                                    <img src="{{ article.image.url }}" class="card-img-top" alt="{{ article.title|escape }}">
+                                {% else %}
+                                    <img src="{% static 'img/default_article.jpg' %}" class="card-img-top" alt="Default Article Image">
+                                {% endif %}
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ article.title|truncatechars:40 }}</h5>
+                                    <p class="card-text">{{ article.content|truncatewords:20 }}</p>
+                                    <div class="article-stats mb-2 text-muted">
+                                        <span><i class="fas fa-user me-1"></i>{{ article.author }}</span>
+                                        <span class="ms-3"><i class="fas fa-calendar-alt me-1"></i>{{ article.publish_date|date:"M d, Y" }}</span>
+                                        <span class="ms-3"><i class="fas fa-thumbs-up me-1"></i>{{ article.likes }}</span>
+                                    </div>
+                                    <a href="{% url 'core:article_detail' article.id %}" class="stretched-link"></a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center text-muted">
+                    <p>No articles match your criteria. Try adjusting your filters!</p>
+                </div>
+            {% endif %}
+        </section>
     </div>
 {% endblock %}

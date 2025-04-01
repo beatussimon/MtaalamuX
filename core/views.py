@@ -883,3 +883,34 @@ def verify_email(request, token):
     except VerificationToken.DoesNotExist:
         return render(request, 'core/error.html', {'message': 'Invalid or expired verification token.'})
     
+def insights(request):
+    # Get all categories for the filter dropdown
+    categories = Category.objects.all()
+
+    # Base queryset: only published articles
+    articles = Article.objects.filter(is_published=True)
+
+    # Search filter
+    query = request.GET.get('q')
+    if query:
+        articles = articles.filter(
+            Q(title__icontains=query) | Q(content__icontains=query)
+        )
+
+    # Category filter
+    category_id = request.GET.get('category')
+    if category_id:
+        articles = articles.filter(category=category_id)  # Fixed: Use 'category' instead of 'category_id'
+
+    # Featured articles: top 3 by likes from filtered results
+    featured_articles = articles.order_by('-likes')[:3]
+
+    # All articles: ordered by publish date
+    all_articles = articles.order_by('-publish_date')
+
+    return render(request, 'core/insights.html', {
+        'featured_articles': featured_articles,
+        'all_articles': all_articles,
+        'categories': categories,
+        'site_theme': request.session.get('theme', 'light')
+    })
