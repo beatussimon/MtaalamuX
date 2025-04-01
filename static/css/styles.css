@@ -536,8 +536,17 @@ footer .small {
 .comment-actions {
     margin-top: 0.5rem;
 }
-.comment-actions form {
-    margin: 0;
+.comment-actions .btn {
+    background: none;
+    border: none;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+.comment-actions .btn:hover {
+    color: #007bff; /* Blue hover effect */
+}
+.comment-actions .text-danger:hover {
+    color: #dc3545; /* Keep red for liked hearts */
 }
 .reply .like-comment-form {
     margin-top: 0.5rem;

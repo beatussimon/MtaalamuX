@@ -239,94 +239,99 @@ class ArticleDetailView(LoginRequiredMixin, DetailView):
             return JsonResponse({'comments_html': comments_html, 'has_more': has_more})
         return super().get(request, *args, **kwargs)
 
-    def render_comment(self, comment):
-        """Helper to render a comment and its replies as HTML for AJAX."""
-        user = self.request.user
-        html = f"""
-        <div class="comment d-flex gap-3 mb-4" id="comment-{comment.id}">
-            <img src="{comment.user.userprofile.avatar.url if comment.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{comment.user.username}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
-            <div class="comment-body flex-grow-1">
-                <p class="mb-1">
-                    {"<a href='" + url('core:professional_detail', args=[comment.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + comment.user.username + "</a>" if comment.user.professional else f"<span class='text-dark fw-bold'>{comment.user.username}</span>"}
-                    <span class="text-muted small ms-2">{comment.created_at|timesince} ago</span>
-                    {" (Edited)" if comment.created_at != comment.updated_at else ""}
-                </p>
-                <p class="text-dark">{comment.content}</p>
-                """
-        if user.is_authenticated:
-            html += f"""
-                <div class="comment-actions d-flex gap-2 align-items-center">
-                    <form method="post" class="d-inline like-comment-form">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
-                        <input type="hidden" name="like_comment" value="true">
-                        <input type="hidden" name="comment_id" value="{comment.id}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-heart me-1"></i> {comment.like_count} {"Unlike" if user in comment.likes.all() else "Like"}
-                        </button>
-                    </form>
-                    <button class="btn btn-sm btn-outline-primary reply-btn" data-comment-id="{comment.id}">Reply</button>
-                    """
-            if comment.user == user:
-                html += f"""
-                    <button class="btn btn-sm btn-outline-secondary edit-btn" data-comment-id="{comment.id}">Edit</button>
-                    <form method="post" class="d-inline delete-form">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
-                        <input type="hidden" name="delete_comment" value="true">
-                        <input type="hidden" name="comment_id" value="{comment.id}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
-                    </form>
-                    """
-            html += "</div>"
-            if comment.user == user:
-                html += f"""
-                <form method="post" class="edit-form mt-2" style="display: none;" id="edit-form-{comment.id}">
+    # core/views.py (partial update)
+def render_comment(self, comment):
+    user = self.request.user
+    html = f"""
+    <div class="comment d-flex gap-3 mb-4" id="comment-{comment.id}">
+        <img src="{comment.user.userprofile.avatar.url if comment.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{comment.user.username}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
+        <div class="comment-body flex-grow-1">
+            <p class="mb-1">
+                {"<a href='" + url('core:professional_detail', args=[comment.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + comment.user.username + "</a>" if comment.user.professional else f"<span class='text-dark fw-bold'>{comment.user.username}</span>"}
+                <span class="text-muted small ms-2">{comment.created_at|timesince} ago</span>
+                {" (Edited)" if comment.created_at != comment.updated_at else ""}
+            </p>
+            <p class="text-dark">{comment.content}</p>
+            """
+    if user.is_authenticated:
+        html += f"""
+            <div class="comment-actions d-flex gap-3 align-items-center">
+                <form method="post" class="d-inline like-comment-form">
                     <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
-                    <input type="hidden" name="edit_comment" value="true">
+                    <input type="hidden" name="like_comment" value="true">
                     <input type="hidden" name="comment_id" value="{comment.id}">
-                    <div class="input-group">
-                        <input type="text" name="edit_comment" class="form-control" value="{comment.content}" required>
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
+                    <button type="submit" class="btn p-0 text-muted" title="{'Unlike' if user in comment.likes.all() else 'Like'}">
+                        <i class="fas fa-heart {'text-danger' if user in comment.likes.all() else 'text-muted'}"></i> {comment.like_count}
+                    </button>
+                </form>
+                <button class="btn p-0 text-muted reply-btn" data-comment-id="{comment.id}" title="Reply">
+                    <i class="fas fa-reply"></i>
+                </button>
+                """
+        if comment.user == user:
+            html += f"""
+                <button class="btn p-0 text-muted edit-btn" data-comment-id="{comment.id}" title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <form method="post" class="d-inline delete-form">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                    <input type="hidden" name="delete_comment" value="true">
+                    <input type="hidden" name="comment_id" value="{comment.id}">
+                    <button type="submit" class="btn p-0 text-muted" title="Delete" onclick="return confirm('Are you sure?')">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </form>
                 """
+        html += "</div>"
+        if comment.user == user:
             html += f"""
-            <form method="post" class="reply-form mt-2" style="display: none;" id="reply-form-{comment.id}">
+            <form method="post" class="edit-form mt-2" style="display: none;" id="edit-form-{comment.id}">
                 <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
-                <input type="hidden" name="reply" value="true">
-                <input type="hidden" name="parent_id" value="{comment.id}">
+                <input type="hidden" name="edit_comment" value="true">
+                <input type="hidden" name="comment_id" value="{comment.id}">
                 <div class="input-group">
-                    <input type="text" name="reply" class="form-control" placeholder="Reply..." required>
-                    <button type="submit" class="btn btn-primary">Send</button>
+                    <input type="text" name="edit_comment" class="form-control" value="{comment.content}" required>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
             """
-        # Render replies
-        for reply in comment.replies.all():
+        html += f"""
+        <form method="post" class="reply-form mt-2" style="display: none;" id="reply-form-{comment.id}">
+            <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+            <input type="hidden" name="reply" value="true">
+            <input type="hidden" name="parent_id" value="{comment.id}">
+            <div class="input-group">
+                <input type="text" name="reply" class="form-control" placeholder="Reply..." required>
+                <button type="submit" class="btn btn-primary">Send</button>
+            </div>
+        </form>
+        """
+    for reply in comment.replies.all():
+        html += f"""
+        <div class="reply d-flex gap-3 mb-3 ms-4">
+            <img src="{reply.user.userprofile.avatar.url if reply.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{reply.user.username}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
+            <div class="reply-body flex-grow-1">
+                <p class="mb-1">
+                    {"<a href='" + url('core:professional_detail', args=[reply.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + reply.user.username + "</a>" if reply.user.professional else f"<span class='text-dark fw-bold'>{reply.user.username}</span>"}
+                    <span class="text-muted small ms-2">{reply.created_at|timesince} ago</span>
+                    {" (Edited)" if reply.created_at != reply.updated_at else ""}
+                </p>
+                <p class="text-dark">{reply.content}</p>
+                """
+        if user.is_authenticated:
             html += f"""
-            <div class="reply d-flex gap-3 mb-3 ms-4">
-                <img src="{reply.user.userprofile.avatar.url if reply.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{reply.user.username}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
-                <div class="reply-body flex-grow-1">
-                    <p class="mb-1">
-                        {"<a href='" + url('core:professional_detail', args=[reply.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + reply.user.username + "</a>" if reply.user.professional else f"<span class='text-dark fw-bold'>{reply.user.username}</span>"}
-                        <span class="text-muted small ms-2">{reply.created_at|timesince} ago</span>
-                        {" (Edited)" if reply.created_at != reply.updated_at else ""}
-                    </p>
-                    <p class="text-dark">{reply.content}</p>
-                    """
-            if user.is_authenticated:
-                html += f"""
-                    <form method="post" class="d-inline like-comment-form">
-                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
-                        <input type="hidden" name="like_comment" value="true">
-                        <input type="hidden" name="comment_id" value="{reply.id}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                            <i class="fas fa-heart me-1"></i> {reply.like_count} {"Unlike" if user in reply.likes.all() else "Like"}
-                        </button>
-                    </form>
-                    """
-            html += "</div></div>"
+                <form method="post" class="d-inline like-comment-form">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                    <input type="hidden" name="like_comment" value="true">
+                    <input type="hidden" name="comment_id" value="{reply.id}">
+                    <button type="submit" class="btn p-0 text-muted" title="{'Unlike' if user in reply.likes.all() else 'Like'}">
+                        <i class="fas fa-heart {'text-danger' if user in reply.likes.all() else 'text-muted'}"></i> {reply.like_count}
+                    </button>
+                </form>
+                """
         html += "</div></div>"
-        return html
+    html += "</div></div>"
+    return html
 
 def url(view_name, args=None):
     from django.urls import reverse

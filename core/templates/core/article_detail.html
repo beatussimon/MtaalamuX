@@ -88,23 +88,29 @@
                                         </p>
                                         <p class="text-dark">{{ comment.content }}</p>
                                         {% if user.is_authenticated %}
-                                            <div class="comment-actions d-flex gap-2 align-items-center">
+                                            <div class="comment-actions d-flex gap-3 align-items-center">
                                                 <form method="post" class="d-inline like-comment-form">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="like_comment" value="true">
                                                     <input type="hidden" name="comment_id" value="{{ comment.id }}">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                        <i class="fas fa-heart me-1"></i> {{ comment.like_count }} {% if user in comment.likes.all %}Unlike{% else %}Like{% endif %}
+                                                    <button type="submit" class="btn p-0 text-muted" title="{% if user in comment.likes.all %}Unlike{% else %}Like{% endif %}">
+                                                        <i class="fas fa-heart {% if user in comment.likes.all %}text-danger{% else %}text-muted{% endif %}"></i> {{ comment.like_count }}
                                                     </button>
                                                 </form>
-                                                <button class="btn btn-sm btn-outline-primary reply-btn" data-comment-id="{{ comment.id }}">Reply</button>
+                                                <button class="btn p-0 text-muted reply-btn" data-comment-id="{{ comment.id }}" title="Reply">
+                                                    <i class="fas fa-reply"></i>
+                                                </button>
                                                 {% if comment.user == user %}
-                                                    <button class="btn btn-sm btn-outline-secondary edit-btn" data-comment-id="{{ comment.id }}">Edit</button>
+                                                    <button class="btn p-0 text-muted edit-btn" data-comment-id="{{ comment.id }}" title="Edit">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
                                                     <form method="post" class="d-inline delete-form">
                                                         {% csrf_token %}
                                                         <input type="hidden" name="delete_comment" value="true">
                                                         <input type="hidden" name="comment_id" value="{{ comment.id }}">
-                                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                                                        <button type="submit" class="btn p-0 text-muted" title="Delete" onclick="return confirm('Are you sure?')">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
                                                     </form>
                                                 {% endif %}
                                             </div>
@@ -151,8 +157,8 @@
                                                             {% csrf_token %}
                                                             <input type="hidden" name="like_comment" value="true">
                                                             <input type="hidden" name="comment_id" value="{{ reply.id }}">
-                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                                <i class="fas fa-heart me-1"></i> {{ reply.like_count }} {% if user in reply.likes.all %}Unlike{% else %}Like{% endif %}
+                                                            <button type="submit" class="btn p-0 text-muted" title="{% if user in reply.likes.all %}Unlike{% else %}Like{% endif %}">
+                                                                <i class="fas fa-heart {% if user in reply.likes.all %}text-danger{% else %}text-muted{% endif %}"></i> {{ reply.like_count }}
                                                             </button>
                                                         </form>
                                                     {% endif %}
