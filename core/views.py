@@ -17,6 +17,9 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q, Count, F, FloatField, Value, Avg
 from django.db.models.functions import Coalesce
+from django.http import JsonResponse
+from django.utils.timesince import timesince
+
 
 class ProfessionalListView(ListView):
     model = Professional
@@ -151,10 +154,11 @@ class ArticleListView(ListView):
 
         return context
 
-class ArticleDetailView(LoginRequiredMixin, DetailView):  # Add LoginRequiredMixin
+class ArticleDetailView(LoginRequiredMixin, DetailView):
     model = Article
     template_name = 'core/article_detail.html'
     context_object_name = 'article'
+    initial_comments_limit = 5
 
     def get_object(self, queryset=None):
         obj = super().get_object(queryset=queryset)
@@ -164,50 +168,172 @@ class ArticleDetailView(LoginRequiredMixin, DetailView):  # Add LoginRequiredMix
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['articles'] = self.object.author.articles.filter(is_published=True).order_by('-publish_date')[:5]
-        context['is_following'] = self.request.user in self.object.author.followers.all() if self.request.user.is_authenticated else False
+        article = self.get_object()
+        context['articles'] = article.author.articles.filter(is_published=True).order_by('-publish_date')[:5]
+        context['is_following'] = self.request.user in article.author.followers.all() if self.request.user.is_authenticated else False
+        context['comments'] = article.comments.filter(parent__isnull=True).order_by('-created_at')[:self.initial_comments_limit]
+        context['total_comments'] = article.comments.filter(parent__isnull=True).count()
+        context['comments_limit'] = self.initial_comments_limit
         return context
 
     def post(self, request, *args, **kwargs):
         article = self.get_object()
-        print(f"POST data: {request.POST}")  # Debug
+        user = request.user
 
         if 'comment' in request.POST:
             content = request.POST['comment'].strip()
-            if content:  # Ensure non-empty
-                try:
-                    comment = Comment.objects.create(
-                        article=article,
-                        user=request.user,
-                        content=content
-                    )
-                    Notification.objects.create(
-                        user=article.author.user,
-                        message=f"{request.user.username} commented on your article",
-                        link=f"/articles/{article.id}/"
-                    )
-                    print(f"Comment saved: {comment.content} by {request.user.username}")
-                except Exception as e:
-                    print(f"Error saving comment: {e}")
-            else:
-                print("Comment was empty, not saved.")
-
-        elif 'like' in request.POST:
-            if request.user in article.likes.all():
-                article.likes.remove(request.user)
-            else:
-                article.likes.add(request.user)
+            if content:
+                comment = Comment.objects.create(article=article, user=user, content=content)
                 Notification.objects.create(
                     user=article.author.user,
-                    message=f"{request.user.username} liked your article",
+                    message=f"{user.username} commented on your article",
+                    link=f"/articles/{article.id}/"
+                )
+        elif 'reply' in request.POST:
+            content = request.POST['reply'].strip()
+            parent_id = request.POST.get('parent_id')
+            if content and parent_id:
+                parent = get_object_or_404(Comment, id=parent_id)
+                comment = Comment.objects.create(article=article, user=user, content=content, parent=parent)
+                Notification.objects.create(
+                    user=parent.user,
+                    message=f"{user.username} replied to your comment",
+                    link=f"/articles/{article.id}/"
+                )
+        elif 'edit_comment' in request.POST:
+            comment_id = request.POST.get('comment_id')
+            content = request.POST['edit_comment'].strip()
+            comment = get_object_or_404(Comment, id=comment_id, user=user)
+            if content:
+                comment.content = content
+                comment.save()
+        elif 'delete_comment' in request.POST:
+            comment_id = request.POST.get('comment_id')
+            comment = get_object_or_404(Comment, id=comment_id, user=user)
+            comment.delete()
+        elif 'like_comment' in request.POST:  # New: Like/Unlike comment
+            comment_id = request.POST.get('comment_id')
+            comment = get_object_or_404(Comment, id=comment_id)
+            if user in comment.likes.all():
+                comment.likes.remove(user)
+            else:
+                comment.likes.add(user)
+                Notification.objects.create(
+                    user=comment.user,
+                    message=f"{user.username} liked your comment",
                     link=f"/articles/{article.id}/"
                 )
 
-        elif 'share' in request.POST:
-            article.shares += 1
-            article.save()
-
         return redirect('core:article_detail', pk=article.id)
+
+    def get(self, request, *args, **kwargs):
+        if 'load_more' in request.GET:
+            article = self.get_object()
+            offset = int(request.GET.get('offset', 0))
+            limit = self.initial_comments_limit
+            comments = article.comments.filter(parent__isnull=True).order_by('-created_at')[offset:offset + limit]
+            comments_html = ""
+            for comment in comments:
+                comments_html += self.render_comment(comment)
+            has_more = article.comments.filter(parent__isnull=True).count() > offset + limit
+            return JsonResponse({'comments_html': comments_html, 'has_more': has_more})
+        return super().get(request, *args, **kwargs)
+
+    def render_comment(self, comment):
+        """Helper to render a comment and its replies as HTML for AJAX."""
+        user = self.request.user
+        html = f"""
+        <div class="comment d-flex gap-3 mb-4" id="comment-{comment.id}">
+            <img src="{comment.user.userprofile.avatar.url if comment.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{comment.user.username}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
+            <div class="comment-body flex-grow-1">
+                <p class="mb-1">
+                    {"<a href='" + url('core:professional_detail', args=[comment.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + comment.user.username + "</a>" if comment.user.professional else f"<span class='text-dark fw-bold'>{comment.user.username}</span>"}
+                    <span class="text-muted small ms-2">{comment.created_at|timesince} ago</span>
+                    {" (Edited)" if comment.created_at != comment.updated_at else ""}
+                </p>
+                <p class="text-dark">{comment.content}</p>
+                """
+        if user.is_authenticated:
+            html += f"""
+                <div class="comment-actions d-flex gap-2 align-items-center">
+                    <form method="post" class="d-inline like-comment-form">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                        <input type="hidden" name="like_comment" value="true">
+                        <input type="hidden" name="comment_id" value="{comment.id}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-heart me-1"></i> {comment.like_count} {"Unlike" if user in comment.likes.all() else "Like"}
+                        </button>
+                    </form>
+                    <button class="btn btn-sm btn-outline-primary reply-btn" data-comment-id="{comment.id}">Reply</button>
+                    """
+            if comment.user == user:
+                html += f"""
+                    <button class="btn btn-sm btn-outline-secondary edit-btn" data-comment-id="{comment.id}">Edit</button>
+                    <form method="post" class="d-inline delete-form">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                        <input type="hidden" name="delete_comment" value="true">
+                        <input type="hidden" name="comment_id" value="{comment.id}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                    """
+            html += "</div>"
+            if comment.user == user:
+                html += f"""
+                <form method="post" class="edit-form mt-2" style="display: none;" id="edit-form-{comment.id}">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                    <input type="hidden" name="edit_comment" value="true">
+                    <input type="hidden" name="comment_id" value="{comment.id}">
+                    <div class="input-group">
+                        <input type="text" name="edit_comment" class="form-control" value="{comment.content}" required>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+                """
+            html += f"""
+            <form method="post" class="reply-form mt-2" style="display: none;" id="reply-form-{comment.id}">
+                <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                <input type="hidden" name="reply" value="true">
+                <input type="hidden" name="parent_id" value="{comment.id}">
+                <div class="input-group">
+                    <input type="text" name="reply" class="form-control" placeholder="Reply..." required>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+            """
+        # Render replies
+        for reply in comment.replies.all():
+            html += f"""
+            <div class="reply d-flex gap-3 mb-3 ms-4">
+                <img src="{reply.user.userprofile.avatar.url if reply.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{reply.user.username}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
+                <div class="reply-body flex-grow-1">
+                    <p class="mb-1">
+                        {"<a href='" + url('core:professional_detail', args=[reply.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + reply.user.username + "</a>" if reply.user.professional else f"<span class='text-dark fw-bold'>{reply.user.username}</span>"}
+                        <span class="text-muted small ms-2">{reply.created_at|timesince} ago</span>
+                        {" (Edited)" if reply.created_at != reply.updated_at else ""}
+                    </p>
+                    <p class="text-dark">{reply.content}</p>
+                    """
+            if user.is_authenticated:
+                html += f"""
+                    <form method="post" class="d-inline like-comment-form">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="{self.request.COOKIES.get('csrftoken', '')}">
+                        <input type="hidden" name="like_comment" value="true">
+                        <input type="hidden" name="comment_id" value="{reply.id}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">
+                            <i class="fas fa-heart me-1"></i> {reply.like_count} {"Unlike" if user in reply.likes.all() else "Like"}
+                        </button>
+                    </form>
+                    """
+            html += "</div></div>"
+        html += "</div></div>"
+        return html
+
+def url(view_name, args=None):
+    from django.urls import reverse
+    return reverse(view_name, args=args) if args else reverse(view_name)
+
+def static(path):
+    return f"/static/{path}"
 
 @login_required
 def dashboard(request):

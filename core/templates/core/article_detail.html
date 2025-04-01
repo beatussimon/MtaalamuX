@@ -59,7 +59,7 @@
 
                     <!-- Comments Section -->
                     <div class="comments-section">
-                        <h4 class="fw-bold mb-4">Comments ({{ article.comment_set.count|default:0 }})</h4>
+                        <h4 class="fw-bold mb-4">Comments ({{ article.comments.count|default:0 }})</h4>
                         {% if user.is_authenticated %}
                             <form method="post" class="mb-5">
                                 {% csrf_token %}
@@ -70,29 +70,104 @@
                                         <button type="submit" class="btn btn-primary rounded-pill"><i class="fas fa-paper-plane"></i></button>
                                     </div>
                                 </div>
-                                {% if form.errors %}
-                                    <div class="text-danger mt-2">{{ form.errors.comment }}</div>
-                                {% endif %}
                             </form>
                         {% endif %}
-                        {% for comment in article.comment_set.all %}
-                            <div class="comment d-flex gap-3 mb-4">
-                                <img src="{% if comment.user.userprofile.avatar %}{{ comment.user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ comment.user.username }}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
-                                <div class="comment-body flex-grow-1">
-                                    <p class="mb-1">
-                                        {% if comment.user.professional %}
-                                            <a href="{% url 'core:professional_detail' comment.user.professional.id %}" class="text-dark text-decoration-none fw-bold">{{ comment.user.username }}</a>
-                                        {% else %}
-                                            <span class="text-dark fw-bold">{{ comment.user.username }}</span>
+                        <div id="comments-list">
+                            {% for comment in comments %}
+                                <div class="comment d-flex gap-3 mb-4" id="comment-{{ comment.id }}">
+                                    <img src="{% if comment.user.userprofile.avatar %}{{ comment.user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ comment.user.username }}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
+                                    <div class="comment-body flex-grow-1">
+                                        <p class="mb-1">
+                                            {% if comment.user.professional %}
+                                                <a href="{% url 'core:professional_detail' comment.user.professional.id %}" class="text-dark text-decoration-none fw-bold">{{ comment.user.username }}</a>
+                                            {% else %}
+                                                <span class="text-dark fw-bold">{{ comment.user.username }}</span>
+                                            {% endif %}
+                                            <span class="text-muted small ms-2">{{ comment.created_at|timesince }} ago</span>
+                                            {% if comment.created_at != comment.updated_at %}<span class="text-muted small">(Edited)</span>{% endif %}
+                                        </p>
+                                        <p class="text-dark">{{ comment.content }}</p>
+                                        {% if user.is_authenticated %}
+                                            <div class="comment-actions d-flex gap-2 align-items-center">
+                                                <form method="post" class="d-inline like-comment-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="like_comment" value="true">
+                                                    <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-heart me-1"></i> {{ comment.like_count }} {% if user in comment.likes.all %}Unlike{% else %}Like{% endif %}
+                                                    </button>
+                                                </form>
+                                                <button class="btn btn-sm btn-outline-primary reply-btn" data-comment-id="{{ comment.id }}">Reply</button>
+                                                {% if comment.user == user %}
+                                                    <button class="btn btn-sm btn-outline-secondary edit-btn" data-comment-id="{{ comment.id }}">Edit</button>
+                                                    <form method="post" class="d-inline delete-form">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="delete_comment" value="true">
+                                                        <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                            <!-- Edit Form -->
+                                            {% if comment.user == user %}
+                                                <form method="post" class="edit-form mt-2" style="display: none;" id="edit-form-{{ comment.id }}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="edit_comment" value="true">
+                                                    <input type="hidden" name="comment_id" value="{{ comment.id }}">
+                                                    <div class="input-group">
+                                                        <input type="text" name="edit_comment" class="form-control" value="{{ comment.content }}" required>
+                                                        <button type="submit" class="btn btn-primary">Save</button>
+                                                    </div>
+                                                </form>
+                                            {% endif %}
+                                            <!-- Reply Form -->
+                                            <form method="post" class="reply-form mt-2" style="display: none;" id="reply-form-{{ comment.id }}">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="reply" value="true">
+                                                <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                                                <div class="input-group">
+                                                    <input type="text" name="reply" class="form-control" placeholder="Reply..." required>
+                                                    <button type="submit" class="btn btn-primary">Send</button>
+                                                </div>
+                                            </form>
                                         {% endif %}
-                                        <span class="text-muted small ms-2">{{ comment.created_at|timesince }} ago</span>
-                                    </p>
-                                    <p class="text-dark">{{ comment.content }}</p>
+                                        <!-- Replies -->
+                                        {% for reply in comment.replies.all %}
+                                            <div class="reply d-flex gap-3 mb-3 ms-4">
+                                                <img src="{% if reply.user.userprofile.avatar %}{{ reply.user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ reply.user.username }}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
+                                                <div class="reply-body flex-grow-1">
+                                                    <p class="mb-1">
+                                                        {% if reply.user.professional %}
+                                                            <a href="{% url 'core:professional_detail' reply.user.professional.id %}" class="text-dark text-decoration-none fw-bold">{{ reply.user.username }}</a>
+                                                        {% else %}
+                                                            <span class="text-dark fw-bold">{{ reply.user.username }}</span>
+                                                        {% endif %}
+                                                        <span class="text-muted small ms-2">{{ reply.created_at|timesince }} ago</span>
+                                                        {% if reply.created_at != reply.updated_at %}<span class="text-muted small">(Edited)</span>{% endif %}
+                                                    </p>
+                                                    <p class="text-dark">{{ reply.content }}</p>
+                                                    {% if user.is_authenticated %}
+                                                        <form method="post" class="d-inline like-comment-form">
+                                                            {% csrf_token %}
+                                                            <input type="hidden" name="like_comment" value="true">
+                                                            <input type="hidden" name="comment_id" value="{{ reply.id }}">
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                                <i class="fas fa-heart me-1"></i> {{ reply.like_count }} {% if user in reply.likes.all %}Unlike{% else %}Like{% endif %}
+                                                            </button>
+                                                        </form>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No comments yet. Be the first to comment!</p>
-                        {% endfor %}
+                            {% empty %}
+                                <p class="text-muted">No comments yet. Be the first to comment!</p>
+                            {% endfor %}
+                        </div>
+                        {% if total_comments > comments_limit %}
+                            <button id="load-more-comments" class="btn btn-outline-secondary mt-3" data-offset="{{ comments_limit }}" data-article-id="{{ article.id }}">Load More</button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -146,7 +221,7 @@
         </div>
     </div>
 
-    <!-- Floating Action Bar (Visible on Scroll) -->
+    <!-- Floating Action Bar -->
     <div class="floating-action-bar d-none d-lg-block position-fixed bottom-0 end-0 p-3" style="z-index: 1000;">
         <div class="d-flex gap-2">
             <form method="post" class="d-inline">
@@ -165,4 +240,46 @@
             </form>
         </div>
     </div>
+
+    <!-- JavaScript -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle Reply Form
+            document.querySelectorAll('.reply-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const replyForm = document.getElementById(`reply-form-${commentId}`);
+                    replyForm.style.display = replyForm.style.display === 'none' ? 'block' : 'none';
+                });
+            });
+
+            // Toggle Edit Form
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const commentId = this.getAttribute('data-comment-id');
+                    const editForm = document.getElementById(`edit-form-${commentId}`);
+                    editForm.style.display = editForm.style.display === 'none' ? 'block' : 'none';
+                });
+            });
+
+            // Load More Comments
+            const loadMoreBtn = document.getElementById('load-more-comments');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', function() {
+                    const offset = parseInt(this.getAttribute('data-offset'));
+                    const articleId = this.getAttribute('data-article-id');
+                    fetch(`/article/${articleId}/?load_more=true&offset=${offset}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            document.getElementById('comments-list').insertAdjacentHTML('beforeend', data.comments_html);
+                            this.setAttribute('data-offset', offset + 5);
+                            if (!data.has_more) {
+                                this.style.display = 'none';
+                            }
+                        })
+                        .catch(error => console.error('Error loading comments:', error));
+                });
+            }
+        });
+    </script>
 {% endblock %}

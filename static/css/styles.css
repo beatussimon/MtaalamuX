@@ -531,3 +531,14 @@ footer .small {
 .article-content {
     border-radius: 8px;
 }
+
+
+.comment-actions {
+    margin-top: 0.5rem;
+}
+.comment-actions form {
+    margin: 0;
+}
+.reply .like-comment-form {
+    margin-top: 0.5rem;
+}
