@@ -37,6 +37,7 @@ urlpatterns = [
     path('admin/verify-upgrade/<int:upgrade_id>/', views.verify_upgrade, name='verify_upgrade'),
     path('signup/', views.signup, name='signup'),
     path('verify-email/<uuid:token>/', views.verify_email, name='verify_email'),
+    path('clear_notifications/', views.clear_notifications, name='clear_notifications'),
 ]
 
 accounts_urlpatterns = [

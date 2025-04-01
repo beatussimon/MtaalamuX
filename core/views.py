@@ -19,7 +19,7 @@ from django.db.models import Q, Count, F, FloatField, Value, Avg
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.utils.timesince import timesince
-
+from django.core.exceptions import ObjectDoesNotExist
 
 class ProfessionalListView(ListView):
     model = Professional
@@ -914,3 +914,12 @@ def insights(request):
         'categories': categories,
         'site_theme': request.session.get('theme', 'light')
     })
+
+def clear_notifications(request):
+    try:
+        Notification.objects.filter(user=request.user).update(is_read=True)
+    except ObjectDoesNotExist:
+        print("No notifications found for the user.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    return redirect('core:notifications')
