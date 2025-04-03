@@ -1,176 +1,3 @@
-/* static/css/styles.css */
-
-/* --- ADD THESE DARK MODE FOOTER OVERRIDES --- */
-html.dark-mode footer#main-footer {
-    background-color: var(--background-dark); /* Use your dark background variable */
-    color: var(--text-dark);           /* Use your dark text variable */
-    border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-html.dark-mode footer#main-footer h6 {
-    color: var(--text-dark); /* Use your dark text variable */
-}
-
-html.dark-mode footer#main-footer p,
-html.dark-mode footer#main-footer address,
-html.dark-mode footer#main-footer .list-unstyled a.footer-link,
-html.dark-mode footer#main-footer .social-links a.footer-link {
-    color: var(--muted-dark); /* Use your muted dark variable */
-}
-
-html.dark-mode footer#main-footer .list-unstyled a.footer-link:hover,
-html.dark-mode footer#main-footer .social-links a.footer-link:hover {
-     color: var(--text-dark); /* Use your main dark text color for hover */
-}
-
-/* --- VERIFY THESE RULES EXIST AND ARE CORRECT --- */
-/* Themed Horizontal Rule Styles */
-hr.hr-themed {
-    border: 0;
-    border-top-width: 1px;
-    border-top-style: solid;
-    opacity: 1;
-}
-html:not(.dark-mode) hr.hr-themed {
-    border-top-color: rgba(0, 0, 0, 0.1);
-}
-html.dark-mode hr.hr-themed {
-     border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Footer Visibility Effect */
-#main-footer {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease-in-out, visibility 0s linear 0.4s; /* Match your 0.4s, adjust visibility delay */
-}
-#main-footer.footer-visible {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.4s ease-in-out, visibility 0s linear 0s; /* Visibility transition immediate */
-}
-
-/* --- MAKE SURE THE CONFLICTING RULE IS GONE --- */
-/* DELETE OR COMMENT OUT footer { background:... color:... } */
-
-/* --- Keep all other existing styles --- */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* --- ADD / VERIFY THESE DARK MODE FOOTER OVERRIDES --- */
-/* Uses your custom CSS variables */
-html.dark-mode footer#main-footer {
-    background-color: var(--background-dark); /* Use your dark background variable */
-    color: var(--text-dark);           /* Use your dark text variable */
-    border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-html.dark-mode footer#main-footer h6 {
-    color: var(--text-dark); /* Or slightly brighter if needed */
-}
-
-html.dark-mode footer#main-footer p,
-html.dark-mode footer#main-footer address,
-html.dark-mode footer#main-footer .list-unstyled a.footer-link,
-html.dark-mode footer#main-footer .social-links a.footer-link {
-    color: var(--muted-dark); /* Use your muted dark variable */
-}
-
-html.dark-mode footer#main-footer .list-unstyled a.footer-link:hover,
-html.dark-mode footer#main-footer .social-links a.footer-link:hover {
-     color: var(--text-dark); /* Use your main dark text color for hover */
-}
-
-/* --- ENSURE THESE RULES EXIST --- */
-/* Themed Horizontal Rule Styles */
-hr.hr-themed {
-    border: 0;
-    border-top-width: 1px;
-    border-top-style: solid;
-    opacity: 1;
-}
-html:not(.dark-mode) hr.hr-themed {
-    border-top-color: rgba(0, 0, 0, 0.1);
-}
-html.dark-mode hr.hr-themed {
-     border-top-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Footer Visibility Effect */
-#main-footer {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out; /* Your 0.4s timing */
-}
-#main-footer.footer-visible {
-    opacity: 1;
-    visibility: visible;
-    /* Transition applied on base selector is enough */
-}
-
-/* --- Ensure your CSS variables are defined --- */
-:root {
-    --primary: #007bff;
-    --primary-dark: #0056b3;
-    --secondary: #00c4cc;
-    --secondary-dark: #009b9f;
-    --background-light: #f4f7fa;
-    --background-dark: #1a1a2e; /* Used in dark mode footer bg */
-    --text-light: #333;
-    --text-dark: #e0e0e0;       /* Used in dark mode footer text/headings */
-    --card-light: #fff;
-    --card-dark: #2c3034;
-    --muted-light: #6c757d;
-    --muted-dark: #adb5bd;       /* Used in dark mode footer muted text/links */
-    --navbar-dark: #343a40;
-    --navbar-dark-gradient: #495057;
-}
-
-/* Ensure the rest of your styles.css is present */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* CSS Reset */
 * {
     margin: 0;
@@ -199,7 +26,6 @@ html.dark-mode hr.hr-themed {
 /* General Styles */
 html, body {
     height: 100%;
-    margin: 0;
 }
 
 body {
@@ -214,6 +40,16 @@ body {
 
 main {
     flex-grow: 1;
+}
+
+/* Themed Horizontal Rule */
+hr.hr-themed {
+    border: 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    opacity: 1;
+}
+html.dark-mode hr.hr-themed {
+    border-top-color: rgba(255, 255, 255, 0.1);
 }
 
 /* Navbar */
@@ -250,7 +86,7 @@ main {
 }
 
 .navbar-dark .navbar-toggler-icon {
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0  Buttons30 30'%3e%3cpath stroke='rgba(255, 255, 255, 0.9)' stroke-width='2' stroke-linecap='round' stroke-miterlimit='10' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
 }
 
 .bg-gradient {
@@ -306,12 +142,109 @@ main {
 /* Hero Section */
 .hero-section {
     padding: 4rem 0;
-    background: linear-gradient(135deg, rgba(var(--primary), 0.1), rgba(var(--secondary), 0.1));
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.1), rgba(0, 196, 204, 0.1));
     border-radius: 20px;
     min-height: 300px;
 }
 
-/* Chat Box */
+/* Footer */
+#main-footer {
+    background-color: var(--background-light);
+    color: var(--text-light);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0s linear 0.4s;
+}
+
+#main-footer.footer-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease-in-out, visibility 0s linear 0s;
+}
+
+#main-footer h6 {
+    color: var(--text-light);
+}
+
+#main-footer p,
+#main-footer address,
+#main-footer .list-unstyled a.footer-link,
+#main-footer .social-links a.footer-link {
+    color: var(--muted-light);
+}
+
+#main-footer .list-unstyled a.footer-link:hover,
+#main-footer .social-links a.footer-link:hover {
+    color: var(--text-light);
+}
+
+/* Dark Mode Overrides */
+html.dark-mode {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+}
+
+html.dark-mode .navbar-light {
+    background-color: var(--navbar-dark);
+}
+
+html.dark-mode .navbar-light .navbar-brand,
+html.dark-mode .navbar-light .navbar-nav .nav-link {
+    color: var(--text-dark);
+}
+
+html.dark-mode .card,
+html.dark-mode .floating-action-bar,
+html.dark-mode .article-content {
+    background-color: var(--card-dark);
+}
+
+html.dark-mode .card-title,
+html.dark-mode .article-body p,
+html.dark-mode .category-circle .circle-initials,
+html.dark-mode .category-circle p,
+html.dark-mode .form-label {
+    color: var(--text-dark);
+}
+
+html.dark-mode .text-muted,
+html.dark-mode .article-stats span,
+html.dark-mode small.text-muted {
+    color: var(--muted-dark);
+}
+
+html.dark-mode .hero-section {
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.2), rgba(0, 196, 204, 0.2));
+}
+
+html.dark-mode .btn-primary {
+    background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
+}
+
+html.dark-mode #main-footer {
+    background-color: var(--background-dark);
+    color: var(--text-dark);
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode #main-footer h6 {
+    color: var(--text-dark);
+}
+
+html.dark-mode #main-footer p,
+html.dark-mode #main-footer address,
+html.dark-mode #main-footer .list-unstyled a.footer-link,
+html.dark-mode #main-footer .social-links a.footer-link {
+    color: var(--muted-dark);
+}
+
+html.dark-mode #main-footer .list-unstyled a.footer-link:hover,
+html.dark-mode #main-footer .social-links a.footer-link:hover {
+    color: var(--text-dark);
+}
+
+/* Remaining styles (unchanged, verified for theme compatibility) */
 .chat-box {
     scrollbar-width: thin;
     scrollbar-color: var(--primary) transparent;
@@ -326,9 +259,9 @@ main {
     border-radius: 4px;
 }
 
-/* Article Detail */
 .article-hero {
     margin-top: -20px;
+    overflow: hidden;
 }
 
 .article-hero-overlay {
@@ -338,6 +271,7 @@ main {
 .article-content {
     line-height: 1.8;
     background-color: var(--card-light);
+    border-radius: 8px;
 }
 
 .article-body p {
@@ -358,11 +292,15 @@ main {
     background-color: var(--card-light);
 }
 
+html.dark-mode .comments-section .comment:hover,
+html.dark-mode .review:hover {
+    background-color: var(--card-dark);
+}
+
 .related-article:hover h6 a {
     color: var(--primary);
 }
 
-/* Professional Detail */
 .professional-hero {
     margin-top: -20px;
     overflow: hidden;
@@ -388,7 +326,6 @@ main {
     transform: scale(1.05);
 }
 
-/* Floating Action Bar */
 .floating-action-bar {
     position: fixed;
     bottom: 20px;
@@ -398,18 +335,26 @@ main {
     border-radius: 50px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 1000;
+    transition: opacity 0.3s;
+}
+
+.floating-action-bar.hidden {
+    opacity: 0;
 }
 
 .floating-action-bar .btn {
     font-size: 0.9rem;
 }
 
-/* Badges */
 .badge.bg-primary {
     background-color: var(--primary) !important;
     color: #fff;
     padding: 0.5rem 1rem;
     border-radius: 20px;
+}
+
+html.dark-mode .badge.bg-primary {
+    background-color: var(--primary-dark) !important;
 }
 
 .badge.bg-success {
@@ -419,7 +364,6 @@ main {
     border-radius: 20px;
 }
 
-/* Category Scroll */
 .category-scroll-container {
     overflow-x: auto;
     white-space: nowrap;
@@ -439,6 +383,18 @@ main {
 
 .category-scroll-container::-webkit-scrollbar-track {
     background: var(--background-light);
+}
+
+html.dark-mode .category-scroll-container {
+    scrollbar-color: var(--muted-dark) var(--background-dark);
+}
+
+html.dark-mode .category-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--muted-dark);
+}
+
+html.dark-mode .category-scroll-container::-webkit-scrollbar-track {
+    background: var(--background-dark);
 }
 
 .category-scroll {
@@ -466,6 +422,11 @@ main {
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+html.dark-mode .category-circle .circle {
+    background-color: var(--card-dark);
+    border-color: var(--muted-dark);
+}
+
 .category-circle .circle-image {
     background-size: cover;
     background-position: center;
@@ -487,7 +448,7 @@ main {
 .category-circle.active .circle {
     border-width: 2px;
     border-color: var(--primary);
-    box-shadow: 0 0 8px rgba(var(--primary), 0.6);
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.6);
 }
 
 .category-circle.active p {
@@ -504,7 +465,6 @@ main {
     color: var(--text-light);
 }
 
-/* Professional Card */
 .professional-card {
     transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
@@ -524,7 +484,6 @@ main {
     content: "";
 }
 
-/* Job Card */
 .job-card {
     transition: transform 0.3s, box-shadow 0.3s;
 }
@@ -534,7 +493,6 @@ main {
     box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
-/* Forms */
 .form-label {
     font-weight: 500;
     color: var(--text-light);
@@ -548,9 +506,19 @@ main {
     transition: border-color 0.3s, background-color 0.3s, color 0.3s;
 }
 
+html.dark-mode .form-control {
+    background-color: var(--card-dark);
+    color: var(--text-dark);
+    border-color: var(--muted-dark);
+}
+
 .form-control:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 5px rgba(var(--primary), 0.3);
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+html.dark-mode .form-control:focus {
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
 }
 
 .text-danger {
@@ -563,33 +531,22 @@ small.text-muted {
     color: var(--muted-light);
 }
 
-
-
 footer .small {
     font-size: 0.875rem;
 }
 
-#main-footer {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
-}
-
-#main-footer.footer-visible {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Social Links */
 .social-links a {
     color: var(--text-light);
+}
+
+html.dark-mode .social-links a {
+    color: var(--text-dark);
 }
 
 .social-links i {
     font-size: 1.25rem;
 }
 
-/* Sticky Elements */
 .sticky-top {
     z-index: 1000;
 }
@@ -600,123 +557,27 @@ footer .small {
     }
 }
 
-/* Dark Mode Styles */
-.dark-mode {
-    background-color: var(--background-dark);
-    color: var(--text-dark);
-}
-
-.dark-mode .navbar-light {
-    background-color: var(--navbar-dark);
-}
-
-.dark-mode .navbar-light .navbar-brand,
-.dark-mode .navbar-light .navbar-nav .nav-link {
-    color: var(--text-dark);
-}
-
-.dark-mode .card,
-.dark-mode .floating-action-bar,
-.dark-mode .article-content {
-    background-color: var(--card-dark);
-}
-
-.dark-mode .card-title,
-.dark-mode .article-body p,
-.dark-mode .category-circle .circle-initials,
-.dark-mode .category-circle p,
-.dark-mode .form-label {
-    color: var(--text-dark);
-}
-
-.dark-mode .text-muted,
-.dark-mode .article-stats span,
-.dark-mode small.text-muted {
-    color: var(--muted-dark);
-}
-
-.dark-mode .comments-section .comment:hover,
-.dark-mode .review:hover {
-    background-color: var(--card-dark);
-}
-
-.dark-mode .hero-section {
-    background: linear-gradient(135deg, rgba(var(--primary), 0.2), rgba(var(--secondary), 0.2));
-}
-
-.dark-mode .btn-primary {
-    background: linear-gradient(90deg, var(--primary-dark), var(--secondary-dark));
-    color: var(--text-dark);
-}
-
-.dark-mode .form-control {
-    background-color: var(--card-dark);
-    color: var(--text-dark);
-    border-color: var(--muted-dark);
-}
-
-.dark-mode .form-control:focus {
-    border-color: var(--primary);
-    box-shadow: 0 0 5px rgba(var(--primary), 0.5);
-}
-
-.dark-mode .badge.bg-primary {
-    background-color: var(--primary-dark) !important;
-}
-
-.dark-mode .social-links a {
-    color: var(--text-dark);
-}
-
-.dark-mode .category-scroll-container {
-    scrollbar-color: var(--muted-dark) var(--background-dark);
-}
-
-.dark-mode .category-scroll-container::-webkit-scrollbar-thumb {
-    background: var(--muted-dark);
-}
-
-.dark-mode .category-scroll-container::-webkit-scrollbar-track {
-    background: var(--background-dark);
-}
-
-.dark-mode .category-circle .circle {
-    background-color: var(--card-dark);
-    border-color: var(--muted-dark);
-}
-
-
-
-.floating-action-bar {
-    transition: opacity 0.3s;
-}
-.floating-action-bar.hidden {
-    opacity: 0;
-}
-.article-hero {
-    overflow: hidden;
-}
-.article-content {
-    border-radius: 8px;
-}
-
-
 .comment-actions {
     margin-top: 0.5rem;
 }
+
 .comment-actions .btn {
     background: none;
     border: none;
     font-size: 0.9rem;
     transition: color 0.2s;
 }
+
 .comment-actions .btn:hover {
-    color: #007bff; /* Blue hover effect */
+    color: #007bff;
 }
+
 .comment-actions .text-danger:hover {
-    color: #dc3545; /* Keep red for liked hearts */
+    color: #dc3545;
 }
+
 .reply .like-comment-form {
     margin-top: 0.5rem;
 }
+
 
