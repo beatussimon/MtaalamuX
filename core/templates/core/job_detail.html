@@ -1,64 +1,172 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load job_tags %} {# <--- LOAD YOUR CUSTOM TAG FILE HERE #}
 
 {% block title %}{{ job.title }} - Job Details{% endblock %}
 
 {% block content %}
-    <div class="container my-5">
-        <h1 class="fw-bold mb-4">
-            {{ job.title }}
-            {% if job_type == 'external' %}
-                <span class="badge bg-{% if job.job_type == 'public' %}success{% else %}info{% endif %}">
-                    {{ job.job_type|title }} Sector
-                </span>
-            {% endif %}
-        </h1>
-
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <div class="d-flex flex-column flex-md-row gap-3 mb-4">
-                    <div class="flex-shrink-0">
-                        {% if job_type == 'internal' %}
-                            <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle" alt="{{ job.professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
-                        {% else %}
-                            <img src="{% static 'img/external_job_icon.png' %}" class="rounded-circle" alt="External Job Icon" style="width: 100px; height: 100px; object-fit: cover;">
-                        {% endif %}
-                    </div>
-                    <div class="flex-grow-1">
-                        <p class="text-muted">
-                            {% if job_type == 'internal' %}
-                                Posted by <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-muted text-decoration-none">{{ job.professional.user.username }}</a>
-                            {% else %}
-                                Posted by {{ job.created_by.username }} ({{ job.job_type|title }} Sector)
-                            {% endif %}
-                            on {{ job.created_at|date:"F d, Y" }}
-                        </p>
-                        <p class="text-muted">
-                            Category: {% if job_type == 'internal' %}{{ job.professional.field.name }}{% else %}{{ job.category.name|default:"N/A" }}{% endif %}
-                        </p>
-                        <p class="text-muted">
-                            Location: {% if job_type == 'internal' %}{{ job.professional.location }}{% else %}{{ job.location|default:"N/A" }}{% endif %}
-                        </p>
-                        <p class="text-muted">Budget: ${{ job.budget|floatformat:2|default:"N/A" }}</p>
-                    </div>
+<div class="container my-5">
+    <div class="card shadow-lg border-0">
+        <div class="card-header bg-light py-3">
+            {# Row for Title and Badges (Same as before) #}
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h1 class="h3 fw-bold mb-0 me-3 text-dark">
+                    {{ job.title }}
+                </h1>
+                <div class="mt-2 mt-md-0">
+                    {# Status Badge (Internal Only) - Check if attribute exists #}
+                    {% if job_type == 'internal' and job.status %}
+                    <span class="badge rounded-pill bg-{% if job.status == 'open' %}primary{% elif job.status == 'completed' %}success{% else %}secondary{% endif %} fs-6 me-2 px-3 py-1">
+                        <i class="fas fa-briefcase me-1"></i> {{ job.get_status_display }}
+                    </span>
+                    {% endif %}
+                    {# Job Type Badge (External Only) - Check if attribute exists #}
+                    {% if job_type == 'external' and job.job_type %}
+                    <span class="badge rounded-pill bg-{% if job.job_type == 'public' %}success{% else %}info{% endif %} fs-6 px-3 py-1">
+                         <i class="fas fa-building me-1"></i> {{ job.get_job_type_display }} {# Use display value #}
+                    </span>
+                    {% endif %}
                 </div>
-
-                <h5>Description</h5>
-                <p>{{ job.description }}</p>
-
-                {% if job.documents.all %}
-                    <h5>Documents</h5>
-                    <ul class="list-unstyled">
-                        {% for doc in job.documents.all %}
-                            <li><a href="{{ doc.document.url }}" class="text-primary text-decoration-none" target="_blank">Download Document</a></li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                {% if job_type == 'internal' %}
-                    <a href="{% url 'core:professional_detail' job.professional.id %}" class="btn btn-primary">Contact Professional</a>
-                {% endif %}
             </div>
         </div>
-    </div>
+
+        <div class="card-body p-4 p-md-5">
+            {# Row for Key Info (Same as before) #}
+            <div class="row gy-3 mb-4 border-bottom pb-4">
+                 {# ... Key Info columns (Poster, Date, Location, Category, Budget) ... #}
+                 {# --- Posted By --- #}
+                <div class="col-md-6 col-lg-3">
+                    <div class="d-flex align-items-center">
+                        {% if job_type == 'internal' and job.professional %}
+                            <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle me-3" alt="{{ job.professional.user.username }}'s photo" style="width: 50px; height: 50px; object-fit: cover;">
+                            <div>
+                                <small class="text-muted d-block">Posted by</small>
+                                <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-decoration-none fw-medium">{{ job.professional.user.username }}</a>
+                            </div>
+                        {% elif job_type == 'external' and job.created_by %}
+                            <i class="fas fa-user-tie fa-2x text-secondary me-3"></i>
+                             <div>
+                                <small class="text-muted d-block">Posted by</small>
+                                <span class="fw-medium">{{ job.created_by.username }}</span>
+                             </div>
+                        {% else %}
+                             {# Fallback if poster info is missing #}
+                             <i class="fas fa-user fa-2x text-secondary me-3"></i>
+                             <div>
+                                <small class="text-muted d-block">Posted by</small>
+                                <span class="fw-medium">N/A</span>
+                             </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {# --- Posted On --- #}
+                <div class="col-md-6 col-lg-3">
+                     <small class="text-muted d-block"><i class="fas fa-calendar-alt fa-fw me-1"></i> Posted On</small>
+                     <span class="fw-medium">{{ job.created_at|date:"F d, Y" }}</span>
+                </div>
+                 {# --- Location --- #}
+                 <div class="col-md-6 col-lg-3">
+                     <small class="text-muted d-block"><i class="fas fa-map-marker-alt fa-fw me-1"></i> Location</small>
+                     <span class="fw-medium">{% if job_type == 'internal' %}{{ job.professional.location|default:"Not specified" }}{% else %}{{ job.location|default:"Not specified" }}{% endif %}</span>
+                 </div>
+                 {# --- Category --- #}
+                 <div class="col-md-6 col-lg-3">
+                     <small class="text-muted d-block"><i class="fas fa-tag fa-fw me-1"></i> Category</small>
+                     <span class="fw-medium">{% if job_type == 'internal' %}{{ job.professional.field.name|default:"Not specified" }}{% else %}{{ job.category.name|default:"Not specified" }}{% endif %}</span>
+                 </div>
+                 {# --- Budget --- #}
+                 {% if job.budget %}
+                 <div class="col-md-6 col-lg-3">
+                     <small class="text-muted d-block"><i class="fas fa-money-bill-wave fa-fw me-1"></i> Budget / Salary</small>
+                     <span class="fw-medium">{{ job.budget|floatformat:2 }}</span>
+                     <span class="text-muted small"> (Estimate/Range)</span>
+                 </div>
+                 {% endif %}
+            </div>
+
+            {# Main Job Details Section #}
+            <div class="mb-4">
+                <h4 class="fw-semibold mb-3"><i class="fas fa-info-circle me-2 text-primary"></i>Full Job Description</h4>
+                {# --- OPTION 1: Use the custom filter (if created) --- #}
+                <div class="text-body-secondary lh-lg job-description-parsed">
+                     {{ job.description|parse_job_description }} {# <--- USE CUSTOM FILTER #}
+                </div>
+
+                {# --- OPTION 2: Fallback to linebreaksbr (if not using custom filter) --- #}
+                {# <div class="text-body-secondary lh-lg bg-light p-4 rounded shadow-sm"> #}
+                {#     {{ job.description|linebreaksbr }} #}
+                {# </div> #}
+                {# <p class="small text-muted mt-3 fst-italic"> #}
+                {#     <i class="fas fa-exclamation-circle me-1"></i> Details such as Responsibilities, Requirements, and specific application steps are usually included in the description above. #}
+                {# </p> #}
+            </div>
+
+
+            {# Attached Documents Section (Same as before) #}
+            {% if job.documents.all %}
+                <div class="mb-4">
+                    <h4 class="fw-semibold mb-3"><i class="fas fa-folder-open me-2 text-primary"></i>Attached Documents</h4>
+                    <ul class="list-group list-group-flush">
+                        {% for doc in job.documents.all %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                                <span><i class="fas fa-file-alt fa-fw me-2"></i> {{ doc.document.name|cut:"job_documents/" }}</span>
+                                <a href="{{ doc.document.url }}" class="btn btn-sm btn-outline-primary" target="_blank" download>
+                                    <i class="fas fa-download me-1"></i> Download
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {# Action / Application Section (Same as before) #}
+            <div class="mt-4 pt-4 border-top bg-light p-4 rounded">
+                 {# ... Action/Apply buttons ... #}
+                 <h4 class="fw-semibold mb-3 text-center">
+                     {% if job_type == 'internal' %}<i class="fas fa-user-plus me-2 text-primary"></i>Apply / Contact{% else %}<i class="fas fa-directions me-2 text-primary"></i>Application Instructions{% endif %}
+                 </h4>
+                 <div class="text-center">
+                     {% if job_type == 'internal' %}
+                        {# Internal Job Actions: Apply/Contact - Needs 'can_apply' and 'has_applied' from view context #}
+                        {% if user.is_authenticated %}
+                            {% if job.status == 'open' %}
+                                {% if can_apply %}
+                                    {% if has_applied %}
+                                        <button class="btn btn-success disabled w-100 w-md-auto"><i class="fas fa-check me-2"></i>Applied</button>
+                                        <p class="small text-muted mt-2">You have already expressed interest in this job.</p>
+                                    {% else %}
+                                        <form method="post" action="{% url 'core:job_detail' pk=job.id %}?type=internal" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-primary w-100 w-md-auto"><i class="fas fa-paper-plane me-2"></i>Apply Now</button>
+                                        </form>
+                                    {% endif %}
+                                {% elif job.professional and user == job.professional.user %}
+                                     <a href="#" class="btn btn-secondary disabled w-100 w-md-auto"><i class="fas fa-cog me-2"></i>Manage Job Posting</a>
+                                     <p class="small text-muted mt-2">This is your job posting.</p>
+                                {% else %}
+                                     {# User logged in but cannot apply - Offer contact #}
+                                     <a href="{% if job.professional %}{% url 'core:professional_detail' job.professional.id %}{% else %}#{% endif %}" class="btn btn-outline-primary w-100 w-md-auto {% if not job.professional %}disabled{% endif %}"><i class="fas fa-envelope me-2"></i>Contact Professional</a>
+                                {% endif %}
+                            {% else %}
+                                 <p class="text-danger fw-medium"><i class="fas fa-times-circle me-2"></i>This job is {{ job.get_status_display }} and no longer accepting applications.</p>
+                            {% endif %}
+                        {% else %}
+                             <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary w-100 w-md-auto"><i class="fas fa-sign-in-alt me-2"></i>Login to Apply</a>
+                        {% endif %}
+
+                    {% else %}
+                        {# External Job Guidance #}
+                        <p class="text-body-secondary">This is an external job posting. Please carefully review the "Full Job Description" section above for specific application instructions provided by the poster (e.g., external website links, contact emails). Applications are not handled directly through this platform.</p>
+                        {# If you add an `apply_url` field to ExternalJob later:
+                        {% if job.apply_url %}
+                            <a href="{{ job.apply_url }}" class="btn btn-primary w-100 w-md-auto" target="_blank" rel="noopener noreferrer"><i class="fas fa-external-link-alt me-2"></i>Apply Externally</a>
+                        {% endif %}
+                        #}
+                    {% endif %}
+                 </div>
+            </div>
+
+        </div> {# End card-body #}
+    </div> {# End card #}
+</div> {# End container #}
 {% endblock %}
