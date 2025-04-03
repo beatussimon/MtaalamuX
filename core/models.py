@@ -211,6 +211,7 @@ class ExternalJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='external_jobs_created')
     documents = GenericRelation('JobDocument', related_query_name='external_job')
+    apply_url = models.URLField(max_length=500, blank=True, null=True, help_text="Direct link to the external application page, if available.")
 
     def __str__(self):
         return self.title
