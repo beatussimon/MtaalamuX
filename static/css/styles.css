@@ -1,3 +1,176 @@
+/* static/css/styles.css */
+
+/* --- ADD THESE DARK MODE FOOTER OVERRIDES --- */
+html.dark-mode footer#main-footer {
+    background-color: var(--background-dark); /* Use your dark background variable */
+    color: var(--text-dark);           /* Use your dark text variable */
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode footer#main-footer h6 {
+    color: var(--text-dark); /* Use your dark text variable */
+}
+
+html.dark-mode footer#main-footer p,
+html.dark-mode footer#main-footer address,
+html.dark-mode footer#main-footer .list-unstyled a.footer-link,
+html.dark-mode footer#main-footer .social-links a.footer-link {
+    color: var(--muted-dark); /* Use your muted dark variable */
+}
+
+html.dark-mode footer#main-footer .list-unstyled a.footer-link:hover,
+html.dark-mode footer#main-footer .social-links a.footer-link:hover {
+     color: var(--text-dark); /* Use your main dark text color for hover */
+}
+
+/* --- VERIFY THESE RULES EXIST AND ARE CORRECT --- */
+/* Themed Horizontal Rule Styles */
+hr.hr-themed {
+    border: 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+    opacity: 1;
+}
+html:not(.dark-mode) hr.hr-themed {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+html.dark-mode hr.hr-themed {
+     border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Footer Visibility Effect */
+#main-footer {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0s linear 0.4s; /* Match your 0.4s, adjust visibility delay */
+}
+#main-footer.footer-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.4s ease-in-out, visibility 0s linear 0s; /* Visibility transition immediate */
+}
+
+/* --- MAKE SURE THE CONFLICTING RULE IS GONE --- */
+/* DELETE OR COMMENT OUT footer { background:... color:... } */
+
+/* --- Keep all other existing styles --- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* --- ADD / VERIFY THESE DARK MODE FOOTER OVERRIDES --- */
+/* Uses your custom CSS variables */
+html.dark-mode footer#main-footer {
+    background-color: var(--background-dark); /* Use your dark background variable */
+    color: var(--text-dark);           /* Use your dark text variable */
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode footer#main-footer h6 {
+    color: var(--text-dark); /* Or slightly brighter if needed */
+}
+
+html.dark-mode footer#main-footer p,
+html.dark-mode footer#main-footer address,
+html.dark-mode footer#main-footer .list-unstyled a.footer-link,
+html.dark-mode footer#main-footer .social-links a.footer-link {
+    color: var(--muted-dark); /* Use your muted dark variable */
+}
+
+html.dark-mode footer#main-footer .list-unstyled a.footer-link:hover,
+html.dark-mode footer#main-footer .social-links a.footer-link:hover {
+     color: var(--text-dark); /* Use your main dark text color for hover */
+}
+
+/* --- ENSURE THESE RULES EXIST --- */
+/* Themed Horizontal Rule Styles */
+hr.hr-themed {
+    border: 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+    opacity: 1;
+}
+html:not(.dark-mode) hr.hr-themed {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+html.dark-mode hr.hr-themed {
+     border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Footer Visibility Effect */
+#main-footer {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out; /* Your 0.4s timing */
+}
+#main-footer.footer-visible {
+    opacity: 1;
+    visibility: visible;
+    /* Transition applied on base selector is enough */
+}
+
+/* --- Ensure your CSS variables are defined --- */
+:root {
+    --primary: #007bff;
+    --primary-dark: #0056b3;
+    --secondary: #00c4cc;
+    --secondary-dark: #009b9f;
+    --background-light: #f4f7fa;
+    --background-dark: #1a1a2e; /* Used in dark mode footer bg */
+    --text-light: #333;
+    --text-dark: #e0e0e0;       /* Used in dark mode footer text/headings */
+    --card-light: #fff;
+    --card-dark: #2c3034;
+    --muted-light: #6c757d;
+    --muted-dark: #adb5bd;       /* Used in dark mode footer muted text/links */
+    --navbar-dark: #343a40;
+    --navbar-dark-gradient: #495057;
+}
+
+/* Ensure the rest of your styles.css is present */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* CSS Reset */
 * {
     margin: 0;
@@ -390,12 +563,7 @@ small.text-muted {
     color: var(--muted-light);
 }
 
-/* Footer */
-footer {
-    flex-shrink: 0;
-    background: linear-gradient(90deg, var(--background-dark), #16213e);
-    color: var(--text-dark);
-}
+
 
 footer .small {
     font-size: 0.875rem;
@@ -551,3 +719,4 @@ footer .small {
 .reply .like-comment-form {
     margin-top: 0.5rem;
 }
+

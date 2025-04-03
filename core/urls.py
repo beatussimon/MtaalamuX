@@ -32,7 +32,7 @@ urlpatterns = [
     path('notifications/delete/<int:notification_id>/', views.delete_notification, name='delete_notification'),
     path('accounts/professionals/', RedirectView.as_view(url='/professionals/', permanent=True), name='redirect_professionals'),
     path('logout/', views.logout_view, name='logout'),
-    path('verify-email/<uuid:token>/', views.verify_email, name='verify_email'),
+    #path('verify-email/<uuid:token>/', views.verify_email, name='verify_email'),
 
     # Admin dashboard paths
     path('admin-dashboard/', views.custom_admin_dashboard, name='custom_admin_dashboard'),

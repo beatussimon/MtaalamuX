@@ -201,71 +201,65 @@
         document.addEventListener('DOMContentLoaded', function() { /* ... footer script ... */ });
     </script>
 
-    {# Theme toggle script (Updated to handle multiple buttons) #}
-     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const themeToggleButtons = document.querySelectorAll('.theme-toggle-btn'); // Select all theme buttons
-            const htmlElement = document.documentElement;
+{# Footer visibility script (WITH DEBUGGING LOGS) #}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('[Footer Visibility] Script Initialized');
+        const footerElement = document.getElementById('main-footer');
+        const threshold = 50; // Pixels from bottom
+        const footerExists = !!footerElement;
 
-            function applyTheme(theme) {
-                const isDark = theme === 'dark';
-                htmlElement.classList.toggle('dark-mode', isDark);
-                // Update navbar classes
-                const navbar = document.querySelector('nav.navbar');
-                if (navbar) {
-                    navbar.classList.toggle('navbar-dark', isDark);
-                    navbar.classList.toggle('bg-dark', isDark);
-                    navbar.classList.toggle('navbar-light', !isDark);
-                    navbar.classList.toggle('bg-light', !isDark);
+        if (!footerExists) {
+            console.warn("[Footer Visibility] Footer element with ID 'main-footer' not found.");
+            return;
+        } else {
+             console.log('[Footer Visibility] Footer element found.');
+        }
+
+        function checkAndToggleVisibility() {
+            // Ensure element still exists (paranoid check)
+             if (!document.body.contains(footerElement)) {
+                 console.warn('[Footer Visibility] Footer element no longer in DOM.');
+                 return; // Stop checks if footer removed dynamically
+             }
+            const totalPageHeight = document.documentElement.scrollHeight;
+            const viewportHeight = document.documentElement.clientHeight;
+            const currentScrollY = window.scrollY || document.documentElement.scrollTop;
+            const isScrollable = totalPageHeight > viewportHeight + 1; // Add 1px buffer for rounding issues
+            const isNearBottom = currentScrollY + viewportHeight >= totalPageHeight - threshold;
+
+            console.log('[Footer Visibility] Check:', { isScrollable, isNearBottom, currentScrollY, viewportHeight, totalPageHeight });
+
+            if (isScrollable && isNearBottom) {
+                if (!footerElement.classList.contains('footer-visible')) {
+                    console.log('[Footer Visibility] ADDING .footer-visible class');
+                    footerElement.classList.add('footer-visible');
                 }
-                // Update Offcanvas class
-                const offcanvas = document.querySelector('.offcanvas');
-                 if (offcanvas) {
-                    offcanvas.classList.toggle('text-bg-dark', isDark);
-                 }
-                 const offcanvasClose = document.querySelector('.offcanvas .btn-close');
-                  if (offcanvasClose) {
-                    offcanvasClose.classList.toggle('btn-close-white', isDark);
-                  }
-
-                // Update ALL theme toggle buttons
-                themeToggleButtons.forEach(button => {
-                    button.classList.toggle('btn-outline-light', isDark);
-                    button.classList.toggle('btn-outline-secondary', !isDark);
-                    const icon = button.querySelector('.theme-toggle-icon');
-                    if (icon) {
-                        icon.classList.toggle('fa-sun', isDark);
-                        icon.classList.toggle('fa-moon', !isDark);
-                    }
-                });
-                 // Update Signup button (if present)
-                 const signupButton = document.querySelector('a.btn.signup-button'); // Added class selector
-                 if (signupButton) {
-                    signupButton.classList.toggle('btn-light', isDark);
-                    signupButton.classList.toggle('btn-primary', !isDark);
-                 }
+            } else {
+                if (footerElement.classList.contains('footer-visible')) {
+                    console.log('[Footer Visibility] REMOVING .footer-visible class');
+                    footerElement.classList.remove('footer-visible');
+                }
             }
+        }
 
-            function setTheme(theme) {
-                 applyTheme(theme);
-                 localStorage.setItem('theme', theme);
-            }
-
-            // --- Initialization ---
-            let currentTheme = localStorage.getItem('theme') || (htmlElement.classList.contains('dark-mode') ? 'dark' : 'light');
-            applyTheme(currentTheme); // Apply initially
-            // --- End Initialization ---
-
-            // Add click listener for ALL theme buttons
-            themeToggleButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    const newTheme = htmlElement.classList.contains('dark-mode') ? 'light' : 'dark';
-                    setTheme(newTheme);
-                });
-            });
+        let scrollTimeoutId;
+        window.addEventListener('scroll', function() {
+            clearTimeout(scrollTimeoutId);
+            scrollTimeoutId = setTimeout(checkAndToggleVisibility, 50);
         });
-    </script>
 
+        let resizeTimeoutId;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeoutId);
+            resizeTimeoutId = setTimeout(checkAndToggleVisibility, 100);
+        });
+
+        console.log('[Footer Visibility] Running initial check.');
+        // Run check slightly after load to ensure layout is stable
+        setTimeout(checkAndToggleVisibility, 100);
+    });
+</script>
 
     {% block extra_scripts %}{% endblock %}
 </body>

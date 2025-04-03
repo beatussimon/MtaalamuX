@@ -551,3 +551,167 @@ footer .small {
 .reply .like-comment-form {
     margin-top: 0.5rem;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* static/css/styles.css */
+
+/* --- Ensure Base Styles Exist --- */
+body {
+    /* Your existing body styles */
+     background-color: var(--background-light); /* Or your base background */
+     color: var(--text-light); /* Or your base text */
+     transition: background-color 0.3s, color 0.3s;
+}
+
+footer#main-footer {
+    /* Base light styles (redundant if using bg-light but safe) */
+    background-color: var(--bs-light);
+    color: var(--bs-dark);
+    border-top: 1px solid var(--bs-border-color); /* Use Bootstrap variable */
+}
+
+footer#main-footer h6 {
+    color: var(--bs-dark); /* Or inherit */
+}
+
+footer#main-footer p,
+footer#main-footer address,
+footer#main-footer .list-unstyled a,
+footer#main-footer .social-links a {
+     color: var(--bs-secondary-color); /* Use Bootstrap's muted text color */
+     text-decoration: none;
+     transition: color 0.2s ease; /* Add transition for hover */
+}
+footer#main-footer .list-unstyled a:hover,
+footer#main-footer .social-links a:hover {
+     color: var(--bs-primary); /* Or var(--bs-dark) for light mode hover */
+}
+
+
+/* --- Dark Mode Overrides --- */
+html.dark-mode {
+    color-scheme: dark;
+    background-color: var(--background-dark); /* Ensure root background changes */
+    color: var(--text-dark);
+}
+
+/* Footer Dark Mode Styles */
+html.dark-mode footer#main-footer {
+    background-color: var(--bs-dark);
+    color: var(--bs-light);
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark-mode footer#main-footer h6 {
+    color: var(--bs-white);
+}
+
+html.dark-mode footer#main-footer p,
+html.dark-mode footer#main-footer address,
+html.dark-mode footer#main-footer .list-unstyled a,
+html.dark-mode footer#main-footer .social-links a {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+html.dark-mode footer#main-footer .list-unstyled a:hover,
+html.dark-mode footer#main-footer .social-links a:hover {
+     color: rgba(255, 255, 255, 0.75);
+}
+
+/* --- Themed Horizontal Rule Styles --- */
+hr.hr-themed {
+    border: 0;
+    border-top-width: 1px;
+    border-top-style: solid;
+    opacity: 1;
+}
+/* Light mode hr color */
+html:not(.dark-mode) hr.hr-themed {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
+/* Dark mode hr color */
+html.dark-mode hr.hr-themed {
+     border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Footer Visibility Effect --- */
+#main-footer {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
+}
+#main-footer.footer-visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0s;
+}
+
+/* --- REMOVE OR COMMENT OUT THIS CONFLICTING RULE --- */
+/*
+footer {
+    flex-shrink: 0;
+    background: linear-gradient(90deg, var(--background-dark), #16213e);
+    color: var(--text-dark);
+}
+*/
+
+/* --- Other existing styles --- */
+/* ... ensure variables like --background-light, --text-light etc. are defined ... */
+:root {
+    --primary: #007bff;
+    --primary-dark: #0056b3;
+    /* ... other color variables ... */
+    --background-light: #f4f7fa;
+    --background-dark: #1a1a2e;
+    --text-light: #333;
+    --text-dark: #e0e0e0;
+    /* ... ensure Bootstrap variables like --bs-light, --bs-dark etc. are available or use your custom ones */
+}

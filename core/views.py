@@ -3,7 +3,7 @@ from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q #Count  # Add Count for annotation
-from .models import Professional, Article, Message, UserProfile, Favorite,UpgradeRequest, Comment,FAQ, Feedback, ServiceReview, Notification, ActivityLog, Job, Category, Badge, AdminHelper, JobDocument, VerificationToken, ExternalJob
+from .models import Professional, Article, Message, UserProfile, Favorite,UpgradeRequest, Comment,FAQ, Feedback, ServiceReview, Notification, ActivityLog, Job, Category, Badge, AdminHelper, JobDocument, ExternalJob
 from .forms import ProfessionalForm, PortfolioItemForm, MessageForm, ArticleForm, ServiceReviewForm, UserProfileForm, JobForm
 from django.contrib.auth.forms import UserCreationForm  # For signup
 from django.contrib.auth import login, logout  # To log in the user after signup
@@ -606,15 +606,26 @@ def signup(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
+            # Create and save the user (they will be active by default)
             user = form.save()
-            # Create a UserProfile for the new user
-            UserProfile.objects.create(user=user)
-            # Log the user in after signup
+
+            # Create the associated UserProfile
+            UserProfile.objects.get_or_create(user=user)
+
+            # Log the user in immediately after signup
             login(request, user)
-            return redirect('core:dashboard')  # Redirect to dashboard after signup
-    else:
+
+            # Redirect to the dashboard or wherever you want logged-in users to go
+            return redirect('core:dashboard')
+        else:
+            # Form is invalid, re-render the page with errors
+            # You might want to add messages here using django.contrib.messages
+            pass # Fall through to render the template with the form object containing errors
+
+    else: # GET request
         form = UserCreationForm()
-    return render(request, 'core/signup.html', {'form': form})
+
+    return render(request, 'core/signup.html', {'form': form})  
 
 def logout_view(request):
     logout(request)
@@ -888,40 +899,30 @@ def signup(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            # Create a verification token
-            token = VerificationToken.objects.create(user=user)
-            # Send verification email
-            verification_url = request.build_absolute_uri(
-                reverse('core:verify_email', kwargs={'token': str(token.token)})
-            )
-            send_mail(
-                'Verify Your Email - mtaalamuX',
-                f'Please click the following link to verify your email: {verification_url}',
-                settings.DEFAULT_FROM_EMAIL,
-                [user.email],
-                fail_silently=False,
-            )
-            login(request, user)
-            return redirect('core:setup_profile')
-    else:
+            try:
+                # Create and save the user (will be active by default)
+                user = form.save()
+                # Create the associated UserProfile
+                UserProfile.objects.get_or_create(user=user)
+                # Log the user in immediately
+                login(request, user)
+                # Add a success message
+                messages.success(request, f"Welcome, {user.username}! Your account created successfully.")
+                # Redirect to the dashboard (or setup_profile if preferred)
+                return redirect('core:dashboard') # Or 'core:setup_profile'
+
+            except Exception as e:
+                messages.error(request, "An unexpected error occurred during signup.")
+                # Consider logging the error 'e'
+        else:
+            # Form is invalid
+            messages.error(request, "Please correct the errors below.")
+
+    else: # GET request
         form = UserCreationForm()
+
     return render(request, 'core/signup.html', {'form': form})
 
-def verify_email(request, token):
-    try:
-        verification_token = VerificationToken.objects.get(token=token)
-        user = verification_token.user
-        # Award Verified User badge
-        Badge.objects.get_or_create(user=user, tier='verified_user')
-        Notification.objects.create(
-            user=user,
-            message="Your email has been verified! You have earned the 'Verified User' badge."
-        )
-        verification_token.delete()
-        return redirect('core:user_profile')
-    except VerificationToken.DoesNotExist:
-        return render(request, 'core/error.html', {'message': 'Invalid or expired verification token.'})
     
 def insights(request):
     # Get all categories for the filter dropdown

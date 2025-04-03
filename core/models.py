@@ -316,12 +316,3 @@ class Badge(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_tier_display()}"
     
-
-class VerificationToken(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    token = models.CharField(max_length=100, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-
-    def __str__(self):
-        return f"Token for {self.user.username}"

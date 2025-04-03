@@ -3,7 +3,7 @@ from django.contrib.contenttypes.admin import GenericTabularInline
 from .models import (
     UserProfile, Category, Professional, PortfolioItem, Message, Article, Comment,
     ServiceReview, Favorite, Notification, ActivityLog, Job, ExternalJob, JobDocument,
-    UpgradeRequest, FAQ, Feedback, CustomAdmin, AdminHelper, Badge, VerificationToken
+    UpgradeRequest, FAQ, Feedback, CustomAdmin, AdminHelper, Badge
 )
 
 @admin.register(UserProfile)
@@ -180,13 +180,5 @@ class BadgeAdmin(admin.ModelAdmin):
     list_display = ('user', 'tier', 'awarded_at')
     search_fields = ('user__username', 'tier')
     list_filter = ('tier', 'awarded_at')
-    list_per_page = 25
-    raw_id_fields = ('user',)
-
-@admin.register(VerificationToken)
-class VerificationTokenAdmin(admin.ModelAdmin):
-    list_display = ('user', 'token', 'created_at', 'expires_at')
-    search_fields = ('user__username', 'token')
-    list_filter = ('created_at', 'expires_at')
     list_per_page = 25
     raw_id_fields = ('user',)
