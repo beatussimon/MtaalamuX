@@ -47,10 +47,11 @@ class ProfessionalListView(ListView):
     context_object_name = 'professionals'
     paginate_by = 12
 
-    # --- get_queryset remains the same as your last working version ---
     def get_queryset(self):
-        # (Keep the combined search logic from the previous "perfect search" answer)
-        queryset = Professional.objects.filter(is_verified=True)
+        # Base queryset: only verified professionals
+        queryset = Professional.objects.filter(is_verified=True).select_related('field', 'user')
+
+        # Apply filters
         query = self.request.GET.get('q')
         category_name = self.request.GET.get('category')
         if category_name:
@@ -59,28 +60,34 @@ class ProfessionalListView(ListView):
             field_q = Q(field__name__icontains=query)
             subfield_q = Q(subfield__icontains=query)
             location_q = Q(location__icontains=query)
-            skills_q = Q(skills__icontains=query) # Basic skills search
+            skills_q = Q(skills__icontains=query)  # Assumes skills is a JSONField or text
             combined_q = field_q | subfield_q | location_q | skills_q
             queryset = queryset.filter(combined_q).distinct()
+
+        # Annotate with follower count and average rating
         queryset = queryset.annotate(
             follower_count_annotated=Count('followers', distinct=True),
             avg_rating_annotated=Coalesce(Avg('reviews__rating'), Value(0.0), output_field=FloatField())
         )
+
+        # Convert to list for custom sorting
         professionals_list = list(queryset)
         for p in professionals_list:
             p._sort_score = (0.7 * p.follower_count_annotated) + (0.3 * p.avg_rating_annotated * 100)
+
+        # Sort by score
         return sorted(professionals_list, key=lambda x: getattr(x, '_sort_score', 0), reverse=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # --- Pass full Category objects to the template ---
+        # Categories: only those with verified professionals
         context['categories'] = Category.objects.filter(
-            professionals__is_verified=True # Only show relevant categories
-        ).distinct().order_by('name') # Pass category objects
+            professionals__is_verified=True
+        ).distinct().order_by('name')
 
-        # Manual pagination (needed because get_queryset returns a list)
-        professionals_sorted = self.object_list
+        # Manual pagination since queryset is a list
+        professionals_sorted = self.get_queryset()
         page = self.request.GET.get('page', 1)
         paginator = Paginator(professionals_sorted, self.paginate_by)
         try:
@@ -94,10 +101,9 @@ class ProfessionalListView(ListView):
         context['paginator'] = paginator
         context['is_paginated'] = paginator.num_pages > 1
         context['page_obj'] = professionals_paginated
-
-        # Keep selected_category as the NAME string for comparison with URL param
         context['selected_category'] = self.request.GET.get('category', '')
         context['query'] = self.request.GET.get('q', '')
+
         return context
 
 
@@ -521,27 +527,41 @@ def view_messages(request, recipient_id=None):
         form = MessageForm(request.POST, request.FILES)
         if form.is_valid():
             recipient = get_object_or_404(User, id=recipient_id)
-            message = form.save(commit=False)
-            message.sender = request.user
-            message.recipient = recipient
-            message.save()
-            Notification.objects.create(user=recipient, message=f"New message from {request.user.username}", link="/messages/")
-            ActivityLog.objects.create(user=request.user, action=f"Sent message to {recipient.username}")
-            return redirect('core:messages_with', recipient_id=recipient_id)
+            if recipient == request.user:
+                form.add_error(None, "You cannot send a message to yourself.")
+            else:
+                message = form.save(commit=False)
+                message.sender = request.user
+                message.recipient = recipient
+                message.save()
+                Notification.objects.create(user=recipient, message=f"New message from {request.user.username}", link=f"/messages/{recipient_id}/")
+                ActivityLog.objects.create(user=request.user, action=f"Sent message to {recipient.username}")
+                return redirect('core:messages_with', recipient_id=recipient_id)
     else:
         form = MessageForm()
 
     if recipient_id:
         recipient = get_object_or_404(User, id=recipient_id)
         messages = Message.objects.filter(
-            (Q(sender=request.user) & Q(recipient=recipient)) | (Q(sender=recipient) & Q(recipient=request.user))
-        ).order_by('timestamp')
+            (Q(sender=request.user) & Q(recipient=recipient)) |
+            (Q(sender=recipient) & Q(recipient=request.user))
+        ).select_related('sender', 'recipient').order_by('timestamp')
+        messages.filter(recipient=request.user, is_read=False).update(is_read=True)
     else:
         messages = None
         recipient = None
-    inbox = Message.objects.filter(recipient=request.user).order_by('-timestamp')
-    sent = Message.objects.filter(sender=request.user).order_by('-timestamp')
-    return render(request, 'core/messages.html', {'form': form, 'messages': messages, 'inbox': inbox, 'sent': sent, 'recipient': recipient})
+
+    inbox = Message.objects.filter(recipient=request.user).select_related('sender').order_by('-timestamp')[:10]
+    sent = Message.objects.filter(sender=request.user).select_related('recipient').order_by('-timestamp')[:10]
+
+    return render(request, 'core/messages.html', {
+        'form': form,
+        'messages': messages,
+        'inbox': inbox,
+        'sent': sent,
+        'recipient': recipient,
+        'user': request.user
+    })
 
 @login_required
 def post_article(request):

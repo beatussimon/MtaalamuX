@@ -6,29 +6,18 @@
 
 <div class="category-scroll-container mb-5 px-3 px-md-5">
     <div class="category-scroll d-flex gap-3 pb-3">
-        {# Loop through Category OBJECTS passed from the view #}
         {% for category in categories %}
-            {# Link uses category NAME, active check compares selected NAME with object NAME #}
             <a href="{% url 'core:professional_list' %}?category={{ category.name|urlencode }}"
                class="category-circle text-decoration-none text-center {% if selected_category == category.name %}active{% endif %}">
-
-                {# Check if category image exists #}
                 {% if category.image and category.image.url %}
-                    {# Image exists: Use background-image for the circle #}
                     <div class="circle circle-image rounded-circle"
-                         style="background-image: url('{{ category.image.url }}');">
-                        {# No text needed inside, background is the image #}
-                    </div>
+                         style="background-image: url('{{ category.image.url }}');"></div>
                 {% else %}
-                    {# No image: Fallback to initials #}
                     <div class="circle circle-initials bg-primary text-white d-flex align-items-center justify-content-center rounded-circle">
-                        {{ category.get_initials }} {# Use the model method #}
-                        {# OR use template filter: {{ category.name|slice:":2"|upper }} #}
-                        {# OR just first letter: {{ category.name|truncatechars:1 }} #}
+                        {{ category.get_initials }}
                     </div>
                 {% endif %}
-
-                <p class="text-dark small mt-2">{{ category.name }}</p> {# Display category name #}
+                <p class="text-dark small mt-2">{{ category.name }}</p>
             </a>
         {% empty %}
             <p class="text-muted">No categories available.</p>
@@ -52,30 +41,53 @@
 <div class="container">
     <div class="row g-4">
         {% for professional in professionals %}
-           <div class="col-12 col-md-6 col-lg-4">
-                 <div class="card shadow-sm professional-card h-100"> <div class="card-body text-center d-flex flex-column"> <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3 mx-auto" alt="{{ professional.user.username }}'s profile photo" style="width: 80px; height: 80px; object-fit: cover;"> <h5 class="card-title mb-1"><a href="{% url 'core:professional_detail' professional.id %}" class="text-dark text-decoration-none stretched-link">{{ professional.user.get_full_name|default:professional.user.username }}</a></h5> <p class="text-muted small mb-1">{{ professional.field.name|default:'N/A' }} - {{ professional.subfield }}</p> <p class="text-muted small mb-2"><i class="fas fa-map-marker-alt me-1 opacity-75"></i> {{ professional.location }}</p> <div class="mt-auto d-flex justify-content-around w-100"> <small class="text-muted"><i class="fas fa-star text-warning me-1"></i> {{ professional.avg_rating_annotated|floatformat:1|default:"N/A" }}</small>
-                             <small class="text-muted"><i class="fas fa-users me-1"></i> {{ professional.follower_count_annotated|default:0 }}</small>
-                         </div>
-                         </div>
-                 </div>
-             </div>
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card shadow-sm professional-card h-100">
+                    <div class="card-body text-center d-flex flex-column">
+                        <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}"
+                             class="rounded-circle mb-3 mx-auto" alt="{{ professional.user.username }}'s profile photo"
+                             style="width: 80px; height: 80px; object-fit: cover;">
+                        <h5 class="card-title mb-1">
+                            <a href="{% url 'core:professional_detail' professional.id %}"
+                               class="text-dark text-decoration-none stretched-link">
+                                {{ professional.user.get_full_name|default:professional.user.username }}
+                            </a>
+                        </h5>
+                        <p class="text-muted small mb-1">
+                            {{ professional.field.name|default:'N/A' }} - {{ professional.subfield|default:'N/A' }}
+                        </p>
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-map-marker-alt me-1 opacity-75"></i> {{ professional.location|default:'N/A' }}
+                        </p>
+                        <div class="mt-auto d-flex justify-content-around w-100">
+                            <small class="text-muted">
+                                <i class="fas fa-star text-warning me-1"></i> {{ professional.avg_rating_annotated|floatformat:1|default:"N/A" }}
+                            </small>
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i> {{ professional.follower_count_annotated|default:0 }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% empty %}
             <div class="col-12 text-center">
                 <p class="text-muted">No professionals found. Try adjusting your search or category.</p>
             </div>
         {% endfor %}
     </div>
-    {% if is_paginated %} {# Check is_paginated flag set in context #}
+
+    {% if is_paginated %}
         <nav aria-label="Page navigation" class="mt-5">
             <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %} {# Use page_obj #}
+                {% if page_obj.has_previous %}
                     <li class="page-item">
                         <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}" aria-label="Previous">
                             <span aria-hidden="true">«</span>
                         </a>
                     </li>
                 {% endif %}
-                {% for num in paginator.page_range %} {# Use paginator for range #}
+                {% for num in paginator.page_range %}
                     <li class="page-item {% if page_obj.number == num %}active{% endif %}">
                         <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query|urlencode }}{% endif %}{% if selected_category %}&category={{ selected_category|urlencode }}{% endif %}">{{ num }}</a>
                     </li>

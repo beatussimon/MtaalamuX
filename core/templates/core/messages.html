@@ -157,7 +157,7 @@
             <div class="col-md-8">
                 <div class="card shadow-sm">
                     <div class="card-body">
-                        {% if messages %}
+                        {% if recipient %}
                             <h4 class="section-header mb-4">Chat with {{ recipient.username }}</h4>
                             <div id="chat-box" class="chat-box">
                                 {% for msg in messages %}
@@ -172,6 +172,8 @@
                                         </p>
                                         <p class="text-muted small">{{ msg.timestamp|timesince }} ago</p>
                                     </div>
+                                {% empty %}
+                                    <p class="text-muted text-center">No messages yet. Start the conversation below!</p>
                                 {% endfor %}
                             </div>
                             <form method="post" class="message-form mt-4" enctype="multipart/form-data">
