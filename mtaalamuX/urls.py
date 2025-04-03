@@ -4,8 +4,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('', include('core.urls')),  # Core app URLs
+    path('admin/', admin.site.urls),
     path('accounts/', include('django.contrib.auth.urls')),  # Django's built-in auth URLs
     path('accounts/', include('core.urls', namespace='accounts')),  # Custom auth URLs (e.g., signup)
 ]

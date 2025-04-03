@@ -1,157 +1,150 @@
 {% extends 'core/base.html' %}
 {% load static %}
+
 {% block title %}Dashboard{% endblock %}
+
 {% block content %}
-    <div class="row g-4">
-        <!-- Profile Sidebar -->
-        <div class="col-md-3">
-            <div class="card shadow-sm sticky-top" style="top: 20px;">
-                <div class="card-body text-center">
-                    <img src="{% if user.userprofile.avatar %}{{ user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="Avatar" style="width: 120px; height: 120px; object-fit: cover;">
-                    <h5>{{ user.username }}</h5>
-                    {% if user.userprofile.is_professional %}
-                        <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
-                        <p><i class="fas fa-users"></i> {{ professional.follower_count }} Followers</p>
-                        <p><i class="fas fa-file-alt"></i> {{ professional.post_count }} Posts</p>
-                        <p><i class="fas fa-star text-warning"></i> {{ professional.average_rating|floatformat:1 }}</p>
-                        <div class="d-flex flex-wrap gap-2 justify-content-center">
-                            {% for badge in professional.badges %}
-                                <span class="badge bg-success">{{ badge }}</span>
-                            {% empty %}
-                                <p class="text-muted small">No badges yet.</p>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                    <a href="{% url 'core:setup_profile' %}" class="btn btn-outline-primary w-100 mt-3"><i class="fas fa-user"></i> Edit Profile</a>
+<div class="container my-5">
+    <h1 class="fw-bold mb-4">Dashboard</h1>
+
+    {% if messages %}
+        <div class="mb-4">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
-            </div>
+            {% endfor %}
         </div>
-        <!-- Main Content -->
-        <div class="col-md-9">
-            {% if user.userprofile.is_professional %}
-                <!-- Quick Actions -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Quick Actions</h4>
-                        <div class="d-flex flex-wrap gap-3">
-                            <a href="{% url 'core:add_portfolio' %}" class="btn btn-outline-secondary"><i class="fas fa-briefcase"></i> Add Portfolio</a>
-                            <a href="{% url 'core:post_article' %}" class="btn btn-primary"><i class="fas fa-pen"></i> Post Article</a>
-                            <a href="{% url 'core:post_job' %}" class="btn btn-outline-primary"><i class="fas fa-briefcase"></i> Post Job</a>
-                        </div>
-                    </div>
-                </div>
-                <!-- Your Articles -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Your Articles</h4>
-                        {% for article in articles %}
-                            <div class="card mb-3 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="card-title"><a href="{% url 'core:article_detail' article.id %}" class="text-decoration-none">{{ article.title }}</a></h5>
-                                    <p class="text-muted">
-                                        <i class="fas fa-eye"></i> {{ article.views }} Views -
-                                        <i class="fas fa-heart"></i> {{ article.like_count }} Likes -
-                                        <i class="fas fa-share"></i> {{ article.shares }} Shares
-                                    </p>
-                                </div>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No articles yet. <a href="{% url 'core:post_article' %}">Post your first article!</a></p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Your Jobs -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Your Jobs</h4>
-                        {% for job in jobs %}
-                            <div class="card mb-3 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ job.title }}</h5>
-                                    <p class="text-muted">{{ job.description|truncatewords:20 }}</p>
-                                    <p>Budget: ${{ job.budget }} - Status: <span class="badge {% if job.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}">{{ job.get_status_display }}</span></p>
-                                </div>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No jobs yet. <a href="{% url 'core:post_job' %}">Post a job!</a></p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Recent Reviews -->
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h4 class="card-title">Recent Reviews</h4>
-                        {% for review in reviews %}
-                            <div class="border-bottom py-3">
-                                <p><i class="fas fa-star text-warning"></i> {{ review.rating }} - {{ review.comment }}</p>
-                                <p class="text-muted">{{ review.reviewer.username }} - {{ review.created_at|timesince }} ago</p>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No reviews yet.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% else %}
-                <!-- Your Feed -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Your Feed</h4>
-                        {% for article in feed %}
-                            <div class="card mb-3 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="card-title"><a href="{% url 'core:article_detail' article.id %}" class="text-decoration-none">{{ article.title }}</a></h5>
-                                    <p class="text-muted">By {{ article.author.user.username }} - {{ article.publish_date|date }}</p>
-                                </div>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">Follow experts to see their posts here.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Your Jobs -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Your Jobs</h4>
-                        {% for job in jobs %}
-                            <div class="card mb-3 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ job.title }}</h5>
-                                    <p class="text-muted">{{ job.description|truncatewords:20 }}</p>
-                                    <p>Budget: ${{ job.budget }} - Status: <span class="badge {% if job.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}">{{ job.get_status_display }}</span></p>
-                                </div>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No jobs posted yet. <a href="{% url 'core:post_job' %}">Post a job!</a></p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Favorites -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Favorites</h4>
-                        {% for fav in favorites %}
-                            <p><a href="{% url 'core:professional_detail' fav.professional.id %}" class="text-decoration-none">{{ fav.professional.field }} - {{ fav.professional.subfield }}</a></p>
-                        {% empty %}
-                            <p class="text-muted">No favorites yet.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Notifications -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-body">
-                        <h4 class="card-title">Notifications</h4>
-                        {% for note in notifications %}
-                            <div class="border-bottom py-2">
-                                <p><a href="{{ note.link }}" class="text-decoration-none">{{ note.message }}</a> - <small class="text-muted">{{ note.created_at|timesince }} ago</small></p>
-                            </div>
-                        {% empty %}
-                            <p class="text-muted">No notifications.</p>
-                        {% endfor %}
-                    </div>
-                </div>
-                <!-- Become a Professional -->
-                <a href="{% url 'core:become_professional' %}" class="btn btn-outline-primary mt-4"><i class="fas fa-briefcase"></i> Become a Professional</a>
-            {% endif %}
-        </div>
-    </div>
-{% endblock %}  
+    {% endif %}
+
+    {% if profile.is_professional %}
+        <!-- Professional Dashboard -->
+        <h2>Welcome, {{ professional.user.username }}!</h2>
+
+        <!-- Articles -->
+        <h3>Your Articles</h3>
+        {% if articles %}
+            <ul>
+                {% for article in articles %}
+                    <li><a href="{% url 'core:article_detail' article.id %}">{{ article.title }}</a></li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't written any articles yet.</p>
+        {% endif %}
+
+        <!-- Reviews -->
+        <h3>Your Reviews</h3>
+        {% if reviews %}
+            <ul>
+                {% for review in reviews %}
+                    <li>{{ review.rating }} stars - {{ review.comment }} (by {{ review.reviewer.username }})</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No reviews yet.</p>
+        {% endif %}
+
+        <!-- Internal Jobs -->
+        <h3>Your Internal Jobs</h3>
+        {% if jobs %}
+            <ul>
+                {% for job in jobs %}
+                    <li>{{ job.title }} (Status: {{ job.status }})</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No internal jobs assigned to you.</p>
+        {% endif %}
+
+        <!-- External Jobs (Matching Field/Subfield) -->
+        <h3>External Jobs (Matching Your Expertise)</h3>
+        {% if external_jobs %}
+            <ul>
+                {% for external_job in external_jobs %}
+                    <li>{{ external_job.title }} (Type: {{ external_job.job_type }}) - {{ external_job.location }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No external jobs match your expertise.</p>
+        {% endif %}
+
+        <!-- Activities -->
+        <h3>Recent Activities</h3>
+        {% if activities %}
+            <ul>
+                {% for activity in activities %}
+                    <li>{{ activity.action }} - {{ activity.timestamp }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No recent activities.</p>
+        {% endif %}
+
+    {% else %}
+        <!-- Client Dashboard -->
+        <h2>Welcome, {{ request.user.username }}!</h2>
+
+        <!-- Feed -->
+        <h3>Your Feed</h3>
+        {% if feed %}
+            <ul>
+                {% for article in feed %}
+                    <li><a href="{% url 'core:article_detail' article.id %}">{{ article.title }}</a> by {{ article.author.user.username }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No articles in your feed. Follow some professionals!</p>
+        {% endif %}
+
+        <!-- Notifications -->
+        <h3>Notifications</h3>
+        {% if notifications %}
+            <ul>
+                {% for notification in notifications %}
+                    <li><a href="{{ notification.link }}">{{ notification.message }}</a> - {{ notification.created_at }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No notifications.</p>
+        {% endif %}
+
+        <!-- Favorites -->
+        <h3>Your Favorites</h3>
+        {% if favorites %}
+            <ul>
+                {% for favorite in favorites %}
+                    <li>{{ favorite.professional.user.username }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No favorites yet.</p>
+        {% endif %}
+
+        <!-- Internal Jobs -->
+        <h3>Your Internal Jobs</h3>
+        {% if jobs %}
+            <ul>
+                {% for job in jobs %}
+                    <li>{{ job.title }} (Status: {{ job.status }})</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't created any internal jobs.</p>
+        {% endif %}
+
+        <!-- External Jobs -->
+        <h3>Your External Jobs</h3>
+        {% if external_jobs %}
+            <ul>
+                {% for external_job in external_jobs %}
+                    <li>{{ external_job.title }} (Type: {{ external_job.job_type }}) - {{ external_job.location }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You haven't created any external jobs.</p>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

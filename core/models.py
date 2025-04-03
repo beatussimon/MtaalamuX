@@ -3,6 +3,10 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.views.generic import DetailView
 import uuid
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericRelation
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -45,11 +49,13 @@ class Category(models.Model):
 
 
 
+from django.core.exceptions import ValidationError
+
 class Professional(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional')
     field = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, related_name='professionals')
-    subfield = models.CharField(max_length=100)
-    location = models.CharField(max_length=100)
+    subfield = models.CharField(max_length=100, blank=True)
+    location = models.CharField(max_length=100, blank=True)
     skills = models.JSONField(default=list)
     photo = models.ImageField(upload_to='professionals/', blank=True, null=True)
     hero_image = models.ImageField(upload_to='hero_images/', blank=True, null=True)
@@ -63,8 +69,17 @@ class Professional(models.Model):
     cv = models.FileField(upload_to='verification/cvs/', blank=True, null=True)
     certificates = models.FileField(upload_to='verification/certificates/', blank=True, null=True)
 
+    def clean(self):
+        from .utils import get_default_category
+        if self.field is None:
+            self.field = get_default_category()
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.user.username} - {self.field}"
+        return f"{self.user.username} - {self.field if self.field else 'Uncategorized'}"
 
     def post_count(self):
         return self.articles.count()
@@ -79,7 +94,6 @@ class Professional(models.Model):
         if reviews:
             return sum(review.rating for review in reviews) / reviews.count()
         return 0
-
 
 class PortfolioItem(models.Model):
     professional = models.ForeignKey(Professional, on_delete=models.CASCADE, related_name='portfolio')
@@ -101,7 +115,7 @@ class Article(models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()
     image = models.ImageField(upload_to='articles/', blank=True)
-    category = models.CharField(max_length=100)
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='articles')
     publish_date = models.DateTimeField(auto_now_add=True)
     is_published = models.BooleanField(default=True)
     views = models.PositiveIntegerField(default=0)
@@ -170,18 +184,37 @@ class Job(models.Model):
         ('closed', 'Closed'),
         ('completed', 'Completed'),
     )
-    professional = models.ForeignKey(Professional, on_delete=models.CASCADE, related_name='jobs')
+    professional = models.ForeignKey('Professional', null=True, on_delete=models.CASCADE, related_name='jobs')
     client = models.ForeignKey(User, on_delete=models.CASCADE, related_name='client_jobs', null=True, blank=True)
     title = models.CharField(max_length=100)
     description = models.TextField()
     budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     created_at = models.DateTimeField(auto_now_add=True)
+    documents = GenericRelation('JobDocument', related_query_name='job')
 
     def __str__(self):
         return self.title
 
+class ExternalJob(models.Model):
+    JOB_TYPE_CHOICES = (
+        ('public', 'Public Sector (Government)'),
+        ('private', 'Private Sector'),
+    )
 
+    title = models.CharField(max_length=100)
+    description = models.TextField()
+    budget = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    job_type = models.CharField(max_length=20, choices=JOB_TYPE_CHOICES, default='public')
+    category = models.ForeignKey('Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='external_jobs')
+    location = models.CharField(max_length=100, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='external_jobs_created')
+    documents = GenericRelation('JobDocument', related_query_name='external_job')
+
+    def __str__(self):
+        return self.title
+    
 class ProfessionalDetailView(DetailView):
     model = Professional
     template_name = 'your_template.html'  # Replace with your template
@@ -257,12 +290,15 @@ class AdminHelper(models.Model):
         return f"{self.user.username} - {self.get_task_display()}"
     
 class JobDocument(models.Model):
-    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='documents')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
     document = models.FileField(upload_to='job_documents/')
 
     def __str__(self):
-        return f"Document for {self.job.title}"
-    
+        if self.content_object:
+            return f"Document for {self.content_object.title}"
+        return "Document (unlinked)"
 
 #For badges
 class Badge(models.Model):

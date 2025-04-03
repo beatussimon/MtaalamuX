@@ -1,55 +1,145 @@
 {% extends 'core/base.html' %}
 {% load static %}
-{% block title %}Upload Job{% endblock %}
+
+{% block title %}Upload Job - Admin{% endblock %}
+
 {% block content %}
     <div class="container my-5">
         <h1 class="fw-bold mb-4">Upload Job</h1>
         <div class="card shadow-sm">
             <div class="card-body">
-                <form method="post" enctype="multipart/form-data">
+                <!-- Display success/error messages -->
+                {% if messages %}
+                    <div class="mb-4">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" enctype="multipart/form-data" class="row g-3">
                     {% csrf_token %}
-                    {% if form.errors %}
-                        <div class="alert alert-danger">
+                    <!-- Display form errors -->
+                    {% if form.errors or form.non_field_errors %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <ul>
                                 {% for field, errors in form.errors.items %}
                                     {% for error in errors %}
                                         <li>{{ field }}: {{ error }}</li>
                                     {% endfor %}
                                 {% endfor %}
+                                {% for error in form.non_field_errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
                             </ul>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     {% endif %}
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="id_professional" class="form-label">Professional</label>
-                            {{ form.professional }}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_title" class="form-label">Title</label>
-                            {{ form.title }}
-                        </div>
-                        <div class="col-12">
-                            <label for="id_description" class="form-label">Description</label>
-                            {{ form.description }}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_budget" class="form-label">Budget</label>
-                            {{ form.budget }}
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_status" class="form-label">Status</label>
-                            {{ form.status }}
-                        </div>
-                        <div class="col-12">
-                            <label for="id_documents" class="form-label">Documents (optional)</label>
-                            <input type="file" name="documents" id="id_documents" class="form-control" multiple>
-                        </div>
+
+                    <!-- Job Type Selection -->
+                    <div class="col-md-6">
+                        <label for="job_type" class="form-label">Job Type</label>
+                        <select name="job_type" id="job_type" class="form-control rounded-pill" required>
+                            {% for value, label in job_types %}
+                                <option value="{{ value }}" {% if request.POST.job_type == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
-                    <div class="d-grid mt-4">
-                        <button type="submit" class="btn btn-primary">Upload Job</button>
+
+                    <!-- Professional (only for internal jobs) -->
+                    <div class="col-md-6" id="professional_field">
+                        <label for="id_professional" class="form-label">Professional</label>
+                        {{ form.professional }}
+                        <small class="text-muted">Select the professional for this job (required for internal jobs).</small>
+                    </div>
+
+                    <!-- Title -->
+                    <div class="col-md-6">
+                        <label for="id_title" class="form-label">Title</label>
+                        {{ form.title }}
+                    </div>
+
+                    <!-- Budget -->
+                    <div class="col-md-6">
+                        <label for="id_budget" class="form-label">Budget (Optional)</label>
+                        {{ form.budget }}
+                    </div>
+
+                    <!-- Category (manual field for ExternalJob) -->
+                    <div class="col-md-6">
+                        <label for="id_category" class="form-label">Category (Optional)</label>
+                        <select name="category" id="id_category" class="form-control rounded-pill">
+                            <option value="">Select a category (optional)</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}" {% if request.POST.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Location (required for external jobs) -->
+                    <div class="col-md-6">
+                        <label for="location" class="form-label">Location (Optional for Internal Jobs)</label>
+                        <input type="text" name="location" id="location" class="form-control rounded-pill" placeholder="Enter location" value="{{ request.POST.location }}">
+                        <small class="text-muted">Required for external jobs.</small>
+                    </div>
+
+                    <!-- Status (only for internal jobs) -->
+                    <div class="col-md-6" id="status_field">
+                        <label for="id_status" class="form-label">Status</label>
+                        {{ form.status }}
+                        <small class="text-muted">Set the status of the job (only for internal jobs).</small>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="col-12">
+                        <label for="id_description" class="form-label">Description</label>
+                        {{ form.description }}
+                    </div>
+
+                    <!-- Documents -->
+                    <div class="col-12">
+                        <label for="id_documents" class="form-label">Documents (Optional)</label>
+                        <input type="file" name="documents" id="id_documents" class="form-control" multiple>
+                        <small class="text-muted">Upload any relevant documents for the job.</small>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="col-12 text-center mt-4">
+                        <button type="submit" class="btn btn-primary rounded-pill">Upload Job</button>
+                        <a href="{% url 'core:custom_admin_dashboard' %}" class="btn btn-outline-secondary rounded-pill">Cancel</a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
+
+    <!-- JavaScript to show/hide fields based on job type -->
+    <script>
+        document.getElementById('job_type').addEventListener('change', function() {
+            const professionalField = document.getElementById('professional_field');
+            const statusField = document.getElementById('status_field');
+            const professionalInput = document.getElementById('id_professional');
+            const statusInput = document.getElementById('id_status');
+
+            if (this.value === 'internal') {
+                professionalField.style.display = 'block';
+                statusField.style.display = 'block';
+                professionalInput.setAttribute('required', 'required');
+                statusInput.setAttribute('required', 'required');
+            } else {
+                professionalField.style.display = 'none';
+                statusField.style.display = 'none';
+                professionalInput.removeAttribute('required');
+                statusInput.removeAttribute('required');
+                professionalInput.value = ''; // Clear the field to avoid submission
+                statusInput.value = ''; // Clear the field to avoid submission
+            }
+        });
+
+        // Trigger change event on page load to set initial state
+        document.getElementById('job_type').dispatchEvent(new Event('change'));
+    </script>
 {% endblock %}

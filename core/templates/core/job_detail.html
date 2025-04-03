@@ -1,55 +1,63 @@
 {% extends 'core/base.html' %}
 {% load static %}
-{% block title %}{{ job.title }}{% endblock %}
+
+{% block title %}{{ job.title }} - Job Details{% endblock %}
+
 {% block content %}
     <div class="container my-5">
-        <div class="row g-5">
-            <!-- Job Details -->
-            <div class="col-lg-8">
-                <div class="card shadow-sm">
-                    <!-- Inside the job details card -->
+        <h1 class="fw-bold mb-4">
+            {{ job.title }}
+            {% if job_type == 'external' %}
+                <span class="badge bg-{% if job.job_type == 'public' %}success{% else %}info{% endif %}">
+                    {{ job.job_type|title }} Sector
+                </span>
+            {% endif %}
+        </h1>
+
+        <div class="card shadow-sm">
             <div class="card-body">
-                <h1 class="card-title fw-bold mb-3">{{ job.title }}</h1>
-                <p class="text-muted small">Posted by <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-muted text-decoration-none">{{ job.professional.user.username }}</a> - {{ job.created_at|date:"F d, Y" }}</p>
-                <p class="text-muted">Status: <span class="badge bg-{% if job.status == 'open' %}success{% else %}secondary{% endif %}">{{ job.status|title }}</span></p>
-                <p class="text-muted">Category: {{ job.professional.field.name }} | Location: {{ job.professional.location }} | Budget: ${{ job.budget|floatformat:2 }}</p>
-                <h5 class="fw-bold mt-4">Description</h5>
-                <p>{{ job.description|linebreaks }}</p>
-                {% if documents %}
-                    <h5 class="fw-bold mt-4">Documents</h5>
+                <div class="d-flex flex-column flex-md-row gap-3 mb-4">
+                    <div class="flex-shrink-0">
+                        {% if job_type == 'internal' %}
+                            <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle" alt="{{ job.professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% else %}
+                            <img src="{% static 'img/external_job_icon.png' %}" class="rounded-circle" alt="External Job Icon" style="width: 100px; height: 100px; object-fit: cover;">
+                        {% endif %}
+                    </div>
+                    <div class="flex-grow-1">
+                        <p class="text-muted">
+                            {% if job_type == 'internal' %}
+                                Posted by <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-muted text-decoration-none">{{ job.professional.user.username }}</a>
+                            {% else %}
+                                Posted by {{ job.created_by.username }} ({{ job.job_type|title }} Sector)
+                            {% endif %}
+                            on {{ job.created_at|date:"F d, Y" }}
+                        </p>
+                        <p class="text-muted">
+                            Category: {% if job_type == 'internal' %}{{ job.professional.field.name }}{% else %}{{ job.category.name|default:"N/A" }}{% endif %}
+                        </p>
+                        <p class="text-muted">
+                            Location: {% if job_type == 'internal' %}{{ job.professional.location }}{% else %}{{ job.location|default:"N/A" }}{% endif %}
+                        </p>
+                        <p class="text-muted">Budget: ${{ job.budget|floatformat:2|default:"N/A" }}</p>
+                    </div>
+                </div>
+
+                <h5>Description</h5>
+                <p>{{ job.description }}</p>
+
+                {% if job.documents.all %}
+                    <h5>Documents</h5>
                     <ul class="list-unstyled">
-                        {% for doc in documents %}
+                        {% for doc in job.documents.all %}
                             <li><a href="{{ doc.document.url }}" class="text-primary text-decoration-none" target="_blank">Download Document</a></li>
                         {% endfor %}
                     </ul>
                 {% endif %}
-                {% if can_apply and not has_applied %}
-                    <form method="post">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary mt-3">Apply Now</button>
-                    </form>
-                {% elif has_applied %}
-                    <p class="text-success mt-3">You have already applied for this job.</p>
-                {% elif user.is_authenticated %}
-                    <p class="text-muted mt-3">You cannot apply to your own job posting.</p>
-                {% else %}
-                    <p class="text-muted mt-3">Please <a href="{% url 'login' %}?next={{ request.path }}" class="text-primary text-decoration-none">log in</a> to apply for this job.</p>
-                {% endif %}
-            </div>
-                </div>
-            </div>
 
-            <!-- Professional Info -->
-            <div class="col-lg-4">
-                <div class="card shadow-sm sticky-top" style="top: 20px;">
-                    <div class="card-body text-center">
-                        <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ job.professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
-                        <h5 class="card-title"><a href="{% url 'core:professional_detail' job.professional.id %}" class="text-dark text-decoration-none">{{ job.professional.user.username }}</a></h5>
-                        <p class="text-muted">{{ job.professional.field.name }} - {{ job.professional.subfield }}</p>
-                        <p><i class="fas fa-star text-warning me-1"></i> {{ job.professional.average_rating|floatformat:1 }} ({{ job.professional.reviews.count }})</p>
-                        <p><i class="fas fa-users me-1"></i> {{ job.professional.follower_count }} Followers</p>
-                    </div>
-                </div>
+                {% if job_type == 'internal' %}
+                    <a href="{% url 'core:professional_detail' job.professional.id %}" class="btn btn-primary">Contact Professional</a>
+                {% endif %}
             </div>
         </div>
     </div>

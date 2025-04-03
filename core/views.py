@@ -3,7 +3,7 @@ from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q #Count  # Add Count for annotation
-from .models import Professional, Article, Message, UserProfile, Favorite,UpgradeRequest, Comment,FAQ, Feedback, ServiceReview, Notification, ActivityLog, Job, Category, Badge, AdminHelper, JobDocument, VerificationToken
+from .models import Professional, Article, Message, UserProfile, Favorite,UpgradeRequest, Comment,FAQ, Feedback, ServiceReview, Notification, ActivityLog, Job, Category, Badge, AdminHelper, JobDocument, VerificationToken, ExternalJob
 from .forms import ProfessionalForm, PortfolioItemForm, MessageForm, ArticleForm, ServiceReviewForm, UserProfileForm, JobForm
 from django.contrib.auth.forms import UserCreationForm  # For signup
 from django.contrib.auth import login, logout  # To log in the user after signup
@@ -14,12 +14,32 @@ from django.http import HttpResponseRedirect
 from django.contrib.auth.decorators import user_passes_test
 from django.db import models
 from django.core.mail import send_mail
+from django.contrib.contenttypes.models import ContentType
 from django.conf import settings
 from django.db.models import Q, Count, F, FloatField, Value, Avg
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.utils.timesince import timesince
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponse
+import csv
+from .utils import get_default_category  # Import the function
+from django.contrib import messages
+
+
+def custom_admin_or_helper_required(view_func):
+    def check_user(user):
+        if not user.is_authenticated:
+            return False
+        # Check if user is a custom admin
+        if hasattr(user, 'custom_admin') and user.custom_admin.is_active:
+            return True
+        # Check if user is an assigned helper
+        return AdminHelper.objects.filter(user=user, custom_admin__is_active=True).exists()
+    
+    decorated_view = user_passes_test(check_user, login_url='login')(view_func)
+    return decorated_view
+
 
 class ProfessionalListView(ListView):
     model = Professional
@@ -340,26 +360,67 @@ def url(view_name, args=None):
 def static(path):
     return f"/static/{path}"
 
+
 @login_required
 def dashboard(request):
     profile, created = UserProfile.objects.get_or_create(user=request.user)
+    
     if profile.is_professional:
-        professional = Professional.objects.get(user=request.user)
+        try:
+            professional = Professional.objects.get(user=request.user)
+        except Professional.DoesNotExist:
+            # If the Professional object doesn't exist, create one
+            professional = Professional.objects.create(
+                user=request.user,
+                field=get_default_category(),
+                subfield='',
+                location='',
+                bio='',
+                is_verified=False,
+            )
+            # Update the UserProfile to ensure consistency
+            profile.is_professional = True
+            profile.save()
+
         articles = professional.articles.all()
         messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')[:5]
         reviews = professional.reviews.all()
         activities = ActivityLog.objects.filter(user=request.user).order_by('-timestamp')[:10]
+        # Internal jobs assigned to the professional
         jobs = Job.objects.filter(professional=professional).order_by('-created_at')[:5]
-        context = {'professional': professional, 'articles': articles, 'messages': messages, 'reviews': reviews, 'activities': activities, 'jobs': jobs}
+        # External jobs that match the professional's field
+        external_jobs = ExternalJob.objects.filter(
+            category=professional.field
+        ).order_by('-created_at')[:5] if professional.field else ExternalJob.objects.none()
+        context = {
+            'professional': professional,
+            'articles': articles,
+            'messages': messages,
+            'reviews': reviews,
+            'activities': activities,
+            'jobs': jobs,
+            'external_jobs': external_jobs
+        }
     else:
         following = Professional.objects.filter(followers=request.user)
         feed = Article.objects.filter(author__in=following, is_published=True).order_by('-publish_date')[:10]
         messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')[:5]
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:10]
         favorites = Favorite.objects.filter(user=request.user)
+        # Internal jobs where the user is the client
         jobs = Job.objects.filter(client=request.user).order_by('-created_at')[:5]
-        context = {'feed': feed, 'messages': messages, 'notifications': notifications, 'favorites': favorites, 'jobs': jobs}
+        # External jobs created by the user
+        external_jobs = ExternalJob.objects.filter(created_by=request.user).order_by('-created_at')[:5]
+        context = {
+            'feed': feed,
+            'messages': messages,
+            'notifications': notifications,
+            'favorites': favorites,
+            'jobs': jobs,
+            'external_jobs': external_jobs
+        }
     return render(request, 'core/dashboard.html', context)
+
 
 @login_required
 def setup_profile(request):
@@ -455,7 +516,7 @@ def add_portfolio(request):
     return render(request, 'core/add_portfolio.html', {'form': form})
 
 @login_required
-def messages(request, recipient_id=None):
+def view_messages(request, recipient_id=None):
     if request.method == 'POST' and recipient_id:
         form = MessageForm(request.POST, request.FILES)
         if form.is_valid():
@@ -612,7 +673,13 @@ class JobListView(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = Job.objects.filter(status='open').select_related('professional').prefetch_related('documents')
+        # Get internal jobs
+        internal_jobs = Job.objects.all()
+        # Get external jobs
+        external_jobs = ExternalJob.objects.all()
+
+        # Apply filters to internal jobs
+        queryset = internal_jobs
         query = self.request.GET.get('q')
         category = self.request.GET.get('category')
         location = self.request.GET.get('location')
@@ -620,72 +687,118 @@ class JobListView(ListView):
 
         if query:
             queryset = queryset.filter(
-                Q(title__icontains=query) | Q(description__icontains=query) | Q(professional__field__name__icontains=query)
+                Q(title__icontains=query) |
+                Q(description__icontains=query) |
+                Q(professional__field__name__icontains=query)
             )
         if category:
-            queryset = queryset.filter(professional__field__name__iexact=category)
+            queryset = queryset.filter(professional__field__name=category)
         if location:
             queryset = queryset.filter(professional__location__icontains=location)
         if budget:
-            try:
-                budget_value = float(budget)
-                queryset = queryset.filter(budget__lte=budget_value)
-            except ValueError:
-                pass
+            queryset = queryset.filter(budget__lte=budget)
 
-        return queryset.order_by('-created_at')
+        # Apply filters to external jobs
+        external_queryset = external_jobs
+        if query:
+            external_queryset = external_queryset.filter(
+                Q(title__icontains=query) |
+                Q(description__icontains=query) |
+                Q(category__name__icontains=query)
+            )
+        if category:
+            external_queryset = external_queryset.filter(category__name=category)
+        if location:
+            external_queryset = external_queryset.filter(location__icontains=location)
+        if budget:
+            external_queryset = external_queryset.filter(budget__lte=budget)
+
+        # Combine the two querysets into a list with a type flag
+        combined_jobs = []
+        for job in queryset:
+            combined_jobs.append({'type': 'internal', 'job': job})
+        for job in external_queryset:
+            combined_jobs.append({'type': 'external', 'job': job})
+
+        # Sort by created_at (newest first)
+        combined_jobs.sort(key=lambda x: x['job'].created_at, reverse=True)
+        return combined_jobs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        jobs = self.get_queryset()
-        page = self.request.GET.get('page', 1)
-        paginator = Paginator(jobs, self.paginate_by)
-        try:
-            jobs_paginated = paginator.page(page)
-        except PageNotAnInteger:
-            jobs_paginated = paginator.page(1)
-        except EmptyPage:
-            jobs_paginated = paginator.page(paginator.num_pages)
-        context['jobs'] = jobs_paginated
         context['categories'] = Category.objects.all()
         return context
     
 
 class JobDetailView(DetailView):
-    model = Job
     template_name = 'core/job_detail.html'
     context_object_name = 'job'
 
+    def get_object(self):
+        job_id = self.kwargs.get('pk')
+        job_type = self.request.GET.get('type')
+
+        if job_type == 'internal':
+            return get_object_or_404(Job, id=job_id)
+        else:
+            return get_object_or_404(ExternalJob, id=job_id)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['can_apply'] = self.request.user.is_authenticated and self.request.user != self.object.professional.user
-        if self.request.user.is_authenticated:
-            context['has_applied'] = Message.objects.filter(
-                sender=self.request.user,
-                recipient=self.object.professional.user,
-                content__contains=f"I'm interested in your job posting: {self.object.title}"
-            ).exists()
+        job_type = self.request.GET.get('type')
+        context['job_type'] = job_type
+
+        # Documents are common to both Job and ExternalJob
         context['documents'] = self.object.documents.all()
+
+        # Application logic only applies to internal jobs (since external jobs don't have a professional)
+        if job_type == 'internal':
+            context['can_apply'] = (
+                self.request.user.is_authenticated and
+                self.request.user != self.object.professional.user
+            )
+            if self.request.user.is_authenticated:
+                context['has_applied'] = Message.objects.filter(
+                    sender=self.request.user,
+                    recipient=self.object.professional.user,
+                    content__contains=f"I'm interested in your job posting: {self.object.title}"
+                ).exists()
+        else:
+            context['can_apply'] = False  # External jobs don't support applications
+            context['has_applied'] = False
+
         return context
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        if request.user.is_authenticated and request.user != self.object.professional.user:
-            message_content = f"I'm interested in your job posting: {self.object.title}"
-            Message.objects.create(
-                sender=request.user,
-                recipient=self.object.professional.user,
-                content=message_content
-            )
-            Notification.objects.create(
-                user=self.object.professional.user,
-                message=f"{request.user.username} has applied for your job: {self.object.title}"
-            )
-            Notification.objects.create(
-                user=request.user,
-                message=f"You have applied for the job: {self.object.title}"
-            )
-        return redirect('core:job_detail', pk=self.object.id)
+        job_type = self.request.GET.get('type')
+
+        # Application logic only applies to internal jobs
+        if job_type == 'internal':
+            if request.user.is_authenticated and request.user != self.object.professional.user:
+                message_content = f"I'm interested in your job posting: {self.object.title}"
+                Message.objects.create(
+                    sender=request.user,
+                    recipient=self.object.professional.user,
+                    content=message_content
+                )
+                Notification.objects.create(
+                    user=self.object.professional.user,
+                    message=f"{request.user.username} has applied for your job: {self.object.title}",
+                    link=f"/jobs/{self.object.id}/?type=internal"
+                )
+                Notification.objects.create(
+                    user=request.user,
+                    message=f"You have applied for the job: {self.object.title}",
+                    link=f"/jobs/{self.object.id}/?type=internal"
+                )
+                messages.success(request, "Your application has been submitted!")
+            else:
+                messages.error(request, "You cannot apply for this job.")
+        else:
+            messages.info(request, "Applications are not available for external jobs.")
+
+        return redirect('core:job_detail', pk=self.object.id, type=job_type)
 
 
 def faq(request):
@@ -718,85 +831,6 @@ def notifications(request):
     }
     return render(request, 'core/notifications.html', context)
 
-#For teh admin dashboard
-
-def custom_admin_required(view_func):
-    def check_custom_admin(user):
-        return user.is_authenticated and hasattr(user, 'custom_admin') and user.custom_admin.is_active
-    return user_passes_test(check_custom_admin)(view_func)
-
-@custom_admin_required
-def custom_admin_dashboard(request):
-    professionals = Professional.objects.all()
-    jobs = Job.objects.all()
-    articles = Article.objects.all()
-    users = User.objects.all()
-    helpers = AdminHelper.objects.filter(custom_admin=request.user.custom_admin)
-
-    context = {
-        'professionals': professionals,
-        'jobs': jobs,
-        'articles': articles,
-        'users': users,
-        'helpers': helpers,
-    }
-    return render(request, 'core/custom_admin_dashboard.html', context)
-
-@custom_admin_required
-def assign_helper(request):
-    if request.method == 'POST':
-        user_id = request.POST.get('user')
-        task = request.POST.get('task')
-        user = get_object_or_404(User, id=user_id)
-        AdminHelper.objects.create(
-            custom_admin=request.user.custom_admin,
-            user=user,
-            task=task
-        )
-        return redirect('core:custom_admin_dashboard')
-    users = User.objects.exclude(id=request.user.id)
-    return render(request, 'core/assign_helper.html', {'users': users})
-
-@custom_admin_required
-def admin_upload_job(request):
-    if request.method == 'POST':
-        form = JobForm(request.POST, request.FILES)
-        if form.is_valid():
-            job = form.save(commit=False)
-            job.professional = form.cleaned_data['professional']
-            job.save()
-            # Save documents if provided
-            documents = request.FILES.getlist('documents')
-            for doc in documents:
-                JobDocument.objects.create(job=job, document=doc)
-            return redirect('core:custom_admin_dashboard')
-    else:
-        form = JobForm()
-    return render(request, 'core/admin_upload_job.html', {'form': form})
-
-@custom_admin_required
-def verify_professional(request, professional_id):
-    professional = get_object_or_404(Professional, id=professional_id)
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'approve':
-            professional.is_verified = True
-            professional.save()
-            # Award badge
-            Badge.objects.get_or_create(user=professional.user, tier='verified_professional')
-            Notification.objects.create(
-                user=professional.user,
-                message="Your professional profile has been verified! You have earned the 'Verified Professional' badge."
-            )
-        elif action == 'reject':
-            professional.delete()
-            Notification.objects.create(
-                user=professional.user,
-                message="Your professional profile verification was rejected."
-            )
-        return redirect('core:custom_admin_dashboard')
-    return render(request, 'core/verify_professional.html', {'professional': professional})
-
 @login_required
 def upgrade(request):
     if request.method == 'POST':
@@ -814,7 +848,7 @@ def upgrade(request):
     upgrade_requests = UpgradeRequest.objects.filter(user=request.user).order_by('-requested_at')
     return render(request, 'core/upgrade.html', {'upgrade_requests': upgrade_requests})
 
-@custom_admin_required
+@custom_admin_or_helper_required
 def verify_upgrade(request, upgrade_id):
     upgrade_request = get_object_or_404(UpgradeRequest, id=upgrade_id)
     if request.method == 'POST':
@@ -933,3 +967,228 @@ def delete_notification(request, notification_id):
     notification = Notification.objects.get(id=notification_id, user=request.user)
     notification.delete()
     return redirect('core:notifications')
+
+@custom_admin_or_helper_required
+def custom_admin_dashboard(request):
+    professionals = Professional.objects.all()
+    jobs = Job.objects.all()
+    external_jobs = ExternalJob.objects.all()
+    articles = Article.objects.all()
+    users = User.objects.all()
+    helpers = AdminHelper.objects.filter(custom_admin=request.user.custom_admin)
+    pending_verifications = Professional.objects.filter(is_verified=False)
+    pending_upgrades = UpgradeRequest.objects.filter(status='pending')
+
+    context = {
+        'users_count': users.count(),
+        'professionals_count': professionals.count(),
+        'jobs_count': jobs.count(),
+        'external_jobs_count': external_jobs.count(),
+        'articles_count': articles.count(),
+        'all_users': users,
+        'professionals': professionals,
+        'pending_verifications': pending_verifications,
+        'helpers': helpers,
+        'pending_upgrades': pending_upgrades,
+        'site_theme': request.session.get('theme', 'light')
+    }
+    return render(request, 'core/custom_admin_dashboard.html', context)
+
+@custom_admin_or_helper_required
+def assign_helper(request):
+    if request.method == 'POST':
+        user_id = request.POST.get('user')
+        task = request.POST.get('task')
+        user = get_object_or_404(User, id=user_id)
+        AdminHelper.objects.create(
+            custom_admin=request.user.custom_admin,
+            user=user,
+            task=task
+        )
+        ActivityLog.objects.create(user=request.user, action=f"Assigned helper: {user.username} - {task}")
+        return redirect('core:custom_admin_dashboard')
+    users = User.objects.exclude(id=request.user.id)
+    return render(request, 'core/assign_helper.html', {'users': users})
+
+@custom_admin_or_helper_required
+def admin_upload_job(request):
+    if request.method == 'POST':
+        form = JobForm(request.POST, request.FILES)
+        job_type = request.POST.get('job_type')
+
+        if form.is_valid():
+            is_valid = True
+
+            if job_type == 'internal':
+                if not form.cleaned_data.get('professional'):
+                    form.add_error('professional', "Professional is required for internal jobs.")
+                    is_valid = False
+                if not form.cleaned_data.get('status'):
+                    form.add_error('status', "Status is required for internal jobs.")
+                    is_valid = False
+            else:
+                location = request.POST.get('location', '').strip()
+                if not location:
+                    messages.error(request, "Location is required for external jobs.")
+                    is_valid = False
+
+            if is_valid:
+                if job_type == 'internal':
+                    job = form.save(commit=False)
+                    job.professional = form.cleaned_data['professional']
+                    job.save()
+                    documents = request.FILES.getlist('documents')
+                    for doc in documents:
+                        JobDocument.objects.create(
+                            content_type=ContentType.objects.get_for_model(Job),
+                            object_id=job.id,
+                            document=doc
+                        )
+                    ActivityLog.objects.create(user=request.user, action=f"Uploaded internal job: {job.title}")
+                else:
+                    category_id = request.POST.get('category')
+                    category = None
+                    if category_id:
+                        try:
+                            category = Category.objects.get(id=category_id)
+                        except Category.DoesNotExist:
+                            messages.error(request, "Invalid category selected.")
+                            is_valid = False
+
+                    if is_valid:
+                        external_job = ExternalJob(
+                            title=form.cleaned_data['title'],
+                            description=form.cleaned_data['description'],
+                            budget=form.cleaned_data.get('budget'),
+                            job_type=job_type,
+                            category=category,
+                            location=location,
+                            created_by=request.user
+                        )
+                        external_job.save()
+                        documents = request.FILES.getlist('documents')
+                        for doc in documents:
+                            JobDocument.objects.create(
+                                content_type=ContentType.objects.get_for_model(ExternalJob),
+                                object_id=external_job.id,
+                                document=doc
+                            )
+                        ActivityLog.objects.create(user=request.user, action=f"Uploaded {job_type} job: {external_job.title}")
+
+                if is_valid:
+                    messages.success(request, "Job uploaded successfully!")
+                    return redirect('core:admin_upload_job')
+        else:
+            messages.error(request, "Please correct the errors below.")
+    else:
+        form = JobForm()
+
+    return render(request, 'core/admin_upload_job.html', {
+        'form': form,
+        'job_types': [
+            ('internal', 'Internal Job (Platform)'),
+            ('public', 'Public Sector (Government)'),
+            ('private', 'Private Sector'),
+        ],
+        'categories': Category.objects.all()  # Add categories to the context
+    })
+
+@custom_admin_or_helper_required
+def verify_professional(request, professional_id):
+    professional = get_object_or_404(Professional, id=professional_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            professional.is_verified = True
+            professional.save()
+            Badge.objects.get_or_create(user=professional.user, tier='verified_professional')
+            Notification.objects.create(
+                user=professional.user,
+                message="Your professional profile has been verified! You have earned the 'Verified Professional' badge.",
+                link=f"/professionals/{professional.id}/"
+            )
+            ActivityLog.objects.create(user=request.user, action=f"Verified professional: {professional.user.username}")
+        elif action == 'reject':
+            professional.delete()
+            Notification.objects.create(
+                user=professional.user,
+                message="Your professional profile verification was rejected."
+            )
+            ActivityLog.objects.create(user=request.user, action=f"Rejected professional: {professional.user.username}")
+        return redirect('core:custom_admin_dashboard')
+    return render(request, 'core/verify_professional.html', {'professional': professional})
+
+@custom_admin_or_helper_required
+def verify_upgrade(request, upgrade_id):
+    upgrade_request = get_object_or_404(UpgradeRequest, id=upgrade_id)
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'approve':
+            upgrade_request.status = 'verified'
+            upgrade_request.save()
+            if upgrade_request.upgrade_type == 'premium_profile':
+                tier = 'premium_professional' if hasattr(upgrade_request.user, 'professional') else 'premium_user'
+            elif upgrade_request.upgrade_type == 'featured_article':
+                tier = 'premium_user'
+            elif upgrade_request.upgrade_type == 'job_boost':
+                tier = 'premium_user'
+            Badge.objects.get_or_create(user=upgrade_request.user, tier=tier)
+            Notification.objects.create(
+                user=upgrade_request.user,
+                message=f"Your {upgrade_request.get_upgrade_type_display()} has been verified! You have earned the '{tier.replace('_', ' ').title()}' badge.",
+                link="/profile/"
+            )
+            ActivityLog.objects.create(user=request.user, action=f"Verified upgrade: {upgrade_request.user.username}")
+        elif action == 'reject':
+            upgrade_request.status = 'rejected'
+            upgrade_request.save()
+            Notification.objects.create(
+                user=upgrade_request.user,
+                message=f"Your {upgrade_request.get_upgrade_type_display()} request was rejected."
+            )
+            ActivityLog.objects.create(user=request.user, action=f"Rejected upgrade: {upgrade_request.user.username}")
+        return redirect('core:custom_admin_dashboard')
+    return render(request, 'core/verify_upgrade.html', {'upgrade_request': upgrade_request})
+
+@custom_admin_or_helper_required
+def export_data(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="admin_data.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Type', 'Count'])
+    writer.writerow(['Users', User.objects.count()])
+    writer.writerow(['Professionals', Professional.objects.count()])
+    writer.writerow(['Jobs', Job.objects.count()])
+    writer.writerow(['Articles', Article.objects.count()])
+    ActivityLog.objects.create(user=request.user, action="Exported admin data as CSV")
+    return response
+
+@custom_admin_or_helper_required
+def toggle_user_status(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.is_active = not user.is_active
+    user.save()
+    action = "Deactivated" if not user.is_active else "Activated"
+    ActivityLog.objects.create(user=request.user, action=f"{action} user: {user.username}")
+    return redirect('core:custom_admin_dashboard')
+
+@custom_admin_or_helper_required
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.delete()
+    ActivityLog.objects.create(user=request.user, action=f"Deleted user: {user.username}")
+    return redirect('core:custom_admin_dashboard')
+
+@custom_admin_or_helper_required
+def remove_helper(request, helper_id):
+    helper = get_object_or_404(AdminHelper, id=helper_id, custom_admin=request.user.custom_admin)
+    helper.delete()
+    ActivityLog.objects.create(user=request.user, action=f"Removed helper: {helper.user.username}")
+    return redirect('core:custom_admin_dashboard')
+
+@custom_admin_or_helper_required
+def delete_professional(request, professional_id):
+    professional = get_object_or_404(Professional, id=professional_id)
+    professional.delete()
+    ActivityLog.objects.create(user=request.user, action=f"Deleted professional: {professional.user.username}")
+    return redirect('core:custom_admin_dashboard')

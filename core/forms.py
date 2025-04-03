@@ -103,6 +103,9 @@ class JobForm(forms.ModelForm):
     class Meta:
         model = Job
         fields = ['professional', 'title', 'description', 'budget', 'status']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 5}),
-        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['professional'].required = False
+        self.fields['status'].required = False
+        self.fields['budget'].required = False
