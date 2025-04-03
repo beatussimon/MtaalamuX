@@ -2,48 +2,37 @@
 {% now "Y" as current_year %}
 
 {# Base classes assume light mode. CSS overrides handle dark mode. #}
-<footer id="main-footer" class="py-4 mt-auto bg-light text-dark border-top"> {# Base: light bg, dark text, top border #}
+<footer id="main-footer" class="py-4 mt-auto bg-light text-dark border-top"> {# ID is crucial #}
     <div class="container">
         <div class="row g-3 justify-content-center align-items-start">
-
             <div class="col-12 col-md-4 text-center text-md-start mb-3 mb-md-0">
                 <h6 class="fw-bold text-uppercase mb-2">mtaalamuX</h6>
-                <p class="small text-muted mb-0 lh-sm"> {# Base: text-muted #}
-                    Connecting professionals & opportunities.
-                </p>
+                <p class="small text-muted mb-0 lh-sm">Connecting professionals & opportunities.</p>
             </div>
-
             <div class="col-6 col-md-4 text-center text-md-start mb-3 mb-md-0">
                 <h6 class="fw-bold text-uppercase mb-2">Quick Links</h6>
                 <ul class="list-unstyled small mb-0 lh-sm">
-                    {# Base links use text-muted, add footer-link class #}
                     <li><a href="{% url 'core:home' %}" class="text-muted text-decoration-none footer-link">Home</a></li>
                     <li><a href="{% url 'core:professional_list' %}" class="text-muted text-decoration-none footer-link">Experts</a></li>
                     <li><a href="{% url 'core:job_list' %}" class="text-muted text-decoration-none footer-link">Jobs</a></li>
                     <li><a href="{% url 'core:faq' %}" class="text-muted text-decoration-none footer-link">FAQs</a></li>
                 </ul>
             </div>
-
             <div class="col-6 col-md-4 text-center text-md-start">
                  <h6 class="fw-bold text-uppercase mb-2">Contact Us</h6>
-                 <address class="small text-muted fst-normal mb-0 lh-sm"> {# Base: text-muted #}
+                 <address class="small text-muted fst-normal mb-0 lh-sm">
                      <i class="fas fa-envelope fa-fw me-1 opacity-75"></i><a href="mailto:support@mtaalamux.com" class="text-muted text-decoration-none footer-link">support@mtaalamux.com</a><br>
                      <i class="fas fa-phone fa-fw me-1 opacity-75"></i>+123-456-7890
                  </address>
             </div>
         </div>
-
         <hr class="my-3 hr-themed"> {# Uses CSS for theming #}
-
         <div class="row g-1 align-items-center">
             <div class="col-md text-center text-md-start mb-2 mb-md-0">
-                <p class="small text-muted mb-0"> {# Base: text-muted #}
-                    &copy; {{ current_year }} mtaalamuX. TZ. All Rights Reserved.
-                </p>
+                <p class="small text-muted mb-0">&copy; {{ current_year }} mtaalamuX. TZ. All Rights Reserved.</p>
             </div>
              <div class="col-md-auto text-center text-md-end">
                  <div class="social-links">
-                     {# Base links use text-muted, add footer-link class #}
                      <a href="#" class="text-muted text-decoration-none me-2 footer-link" title="LinkedIn"><i class="fab fa-linkedin fs-5"></i></a>
                      <a href="#" class="text-muted text-decoration-none me-2 footer-link" title="Twitter"><i class="fab fa-twitter fs-5"></i></a>
                      <a href="#" class="text-muted text-decoration-none footer-link" title="GitHub"><i class="fab fa-github fs-5"></i></a>
