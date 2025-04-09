@@ -429,14 +429,14 @@ def setup_profile(request):
 
 
 def get_default_category():
-    """Helper function to return a default Category if none exists."""
+    """Helper function to return or create a default Category."""
     return Category.objects.first() or Category.objects.create(name="General")
 
 @login_required
 def dashboard(request):
     # Get or create UserProfile
     profile, created = UserProfile.objects.get_or_create(user=request.user)
-    
+
     # Professional Dashboard
     if profile.is_professional:
         try:
@@ -455,16 +455,17 @@ def dashboard(request):
             profile.save()
 
         # Professional-specific data
-        articles = professional.articles.all()[:5]  # Limit to 5 for display
+        articles = Article.objects.filter(author=professional, is_published=True)[:5]
         messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')[:5]
-        reviews = professional.reviews.all()[:5]  # Limit to 5
+        reviews = ServiceReview.objects.filter(professional=professional)[:5]
         activities = ActivityLog.objects.filter(user=request.user).order_by('-timestamp')[:5]
         # Internal jobs assigned to the professional
         jobs = Job.objects.filter(professional=professional).order_by('-created_at')[:5]
         # External jobs matching field/subfield
         external_jobs = ExternalJob.objects.filter(
-            Q(category=professional.field) | Q(subfield=professional.subfield),
-            professional__isnull=True  # Exclude assigned jobs
+            Q(category=professional.field) |
+            Q(subfield__icontains=professional.subfield),
+            professional__isnull=True  # Assuming ExternalJob can link to Professional (not in model yet)
         ).exclude(created_by=request.user).order_by('-created_at')[:5] if professional.field else ExternalJob.objects.none()
 
         context = {
@@ -477,16 +478,16 @@ def dashboard(request):
             'jobs': jobs,
             'external_jobs': external_jobs,
         }
-    
+
     # Client Dashboard
     else:
         following = Professional.objects.filter(followers=request.user)
         feed = Article.objects.filter(
             author__in=following, is_published=True
-        ).order_by('-publish_date')[:5]  # Limit to 5
+        ).order_by('-publish_date')[:5]
         messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')[:5]
         notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:5]
-        favorites = Favorite.objects.filter(user=request.user)[:5]  # Limit to 5
+        favorites = Favorite.objects.filter(user=request.user)[:5]
         # Internal jobs where user is the client
         jobs = Job.objects.filter(client=request.user).order_by('-created_at')[:5]
         # External jobs created by the user
@@ -503,6 +504,7 @@ def dashboard(request):
         }
 
     return render(request, 'core/dashboard.html', context)
+
 
 @login_required
 def become_professional(request):
