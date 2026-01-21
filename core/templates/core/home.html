@@ -18,7 +18,7 @@
                         <div class="card shadow-sm">
                             <div class="card-body">
                                 <h4 class="fw-bold mb-3">Featured Expert</h4>
-                                <img src="{% if top_professionals.0.photo %}{{ top_professionals.0.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ top_professionals.0.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                                <img src="{% if top_professionals.0.photo %}{{ top_professionals.0.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ top_professionals.0.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
                                 <h5 class="card-title"><a href="{% url 'core:professional_detail' top_professionals.0.id %}" class="text-dark text-decoration-none">{{ top_professionals.0.user.username }}</a></h5>
                                 <p class="text-muted">{{ top_professionals.0.field.name }} - {{ top_professionals.0.subfield }}</p>
                             </div>
@@ -49,7 +49,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card shadow-sm professional-card">
                         <div class="card-body text-center">
-                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
+                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 100px; height: 100px; object-fit: cover;">
                             <h5 class="card-title"><a href="{% url 'core:professional_detail' professional.id %}" class="text-dark text-decoration-none">{{ professional.user.username }}</a></h5>
                             <p class="text-muted">{{ professional.field.name }} - {{ professional.subfield }}</p>
                             <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1 }} ({{ professional.reviews.count }})</p>
@@ -99,7 +99,7 @@
                             {% if article.image %}
                                 <img src="{{ article.image.url }}" class="card-img-top rounded mb-3" alt="Article image for {{ article.title }}" style="height: 150px; object-fit: cover;">
                             {% else %}
-                                <img src="{% static 'img/default_article.jpg' %}" class="card-img-top rounded mb-3" alt="Default article image" style="height: 150px; object-fit: cover;">
+                                <img src="{% static 'img/default_article.svg' %}" class="card-img-top rounded mb-3" alt="Default article image" style="height: 150px; object-fit: cover;">
                             {% endif %}
                             <h5 class="card-title"><a href="{% url 'core:article_detail' article.id %}" class="text-dark text-decoration-none">{{ article.title|truncatewords:10 }}</a></h5>
                             <p class="text-muted small">By <a href="{% url 'core:professional_detail' article.author.id %}" class="text-muted text-decoration-none">{{ article.author.user.username }}</a> - {{ article.publish_date|date:"F d, Y" }}</p>

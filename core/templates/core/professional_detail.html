@@ -8,7 +8,7 @@
     {% if professional.hero_image %}
         <img src="{{ professional.hero_image.url }}" class="img-fluid rounded w-100" alt="{{ professional.user.username }}'s hero image" style="max-height: 500px; object-fit: cover;">
     {% else %}
-        <img src="{% static 'img/default_hero.jpg' %}" class="img-fluid rounded w-100" alt="Default hero image" style="max-height: 500px; object-fit: cover;">
+        <img src="{% static 'img/default_hero.svg' %}" class="img-fluid rounded w-100" alt="Default hero image" style="max-height: 500px; object-fit: cover;">
     {% endif %}
     <div class="professional-hero-overlay position-absolute bottom-0 start-0 w-100 p-4 text-white" style="background: rgba(0, 0, 0, 0.5);">
         <h1 class="display-4 fw-bold mb-2">{{ professional.field }} - {{ professional.subfield }}</h1>
@@ -26,7 +26,7 @@
                 <div class="sticky-top" style="top: 20px;">
                     <div class="card shadow-sm mb-4">
                         <div class="card-body text-center">
-                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 150px; height: 150px; object-fit: cover;">
+                            <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle mb-3" alt="{{ professional.user.username }}'s profile photo" style="width: 150px; height: 150px; object-fit: cover;">
                             <h3 class="card-title">{{ professional.user.username }}</h3>
                             <p class="text-muted">{{ professional.field }} - {{ professional.subfield }}</p>
                             <p><i class="fas fa-star text-warning me-1"></i> {{ professional.average_rating|floatformat:1|default:"N/A" }} ({{ professional.reviews.count|default:0 }})</p>
@@ -113,7 +113,7 @@
                                 {% if article.image %}
                                     <img src="{{ article.image.url }}" class="rounded" alt="Article image for {{ article.title }}" style="width: 80px; height: 80px; object-fit: cover;">
                                 {% else %}
-                                    <img src="{% static 'img/default_article.jpg' %}" class="rounded" alt="Default article image" style="width: 80px; height: 80px; object-fit: cover;">
+                                    <img src="{% static 'img/default_article.svg' %}" class="rounded" alt="Default article image" style="width: 80px; height: 80px; object-fit: cover;">
                                 {% endif %}
                                 <div>
                                     <h6 class="mb-1"><a href="{% url 'core:article_detail' article.id %}" class="text-dark text-decoration-none">{{ article.title|truncatewords:10 }}</a></h6>
@@ -132,7 +132,7 @@
                         <h4 class="card-title fw-bold">Reviews ({{ reviews.count|default:0 }})</h4>
                         {% for review in reviews %}
                             <div class="review d-flex gap-3 mb-4">
-                                <img src="{% if review.reviewer.userprofile %}{{ review.reviewer.userprofile.avatar.url|default_if_none:'/static/img/default_avatar.jpg' }}{% else %}{% static 'img/default_avatar.jpg' %}{% endif %}" class="rounded-circle" alt="{{ review.reviewer.username }}'s avatar" style="width: 40px; height: 40px; object-fit: cover;">
+                                <img src="{% if review.reviewer.userprofile %}{{ review.reviewer.userprofile.avatar.url|default_if_none:'/static/img/default_avatar.svg' }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle" alt="{{ review.reviewer.username }}'s avatar" style="width: 40px; height: 40px; object-fit: cover;">
                                 <div class="review-body flex-grow-1">
                                     <p class="mb-1">
                                         {% if review.reviewer.professional %}

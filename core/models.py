@@ -1,7 +1,5 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.utils import timezone
-from django.views.generic import DetailView
 import uuid
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -12,7 +10,7 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     is_professional = models.BooleanField(default=False)
     bio = models.TextField(max_length=1000, blank=True)
-    avatar = models.ImageField(upload_to='avatars/', default='default_avatar.jpg')
+    avatar = models.ImageField(upload_to='avatars/', default='default_avatar.svg')
     interests = models.CharField(max_length=200, blank=True)
     last_seen = models.DateTimeField(auto_now=True)
     theme = models.CharField(max_length=10, choices=[('light', 'Light'), ('dark', 'Dark')], default='light')
@@ -48,8 +46,6 @@ class Category(models.Model):
         return "?" # Fallback if name is empty
 
 
-
-from django.core.exceptions import ValidationError
 
 class Professional(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='professional')
@@ -216,20 +212,6 @@ class ExternalJob(models.Model):
     def __str__(self):
         return self.title
     
-class ProfessionalDetailView(DetailView):
-    model = Professional
-    template_name = 'your_template.html'  # Replace with your template
-
-    def get_queryset(self):
-        # Include related fields that *do* have setters, but *exclude* M2M
-        field_names = [
-            field.name
-            for field in Professional._meta.get_fields()
-            if not field.many_to_many and (not field.is_relation or field.one_to_one or hasattr(field, "field"))  # Key change
-        ]
-        return super().get_queryset().only(*field_names)
-    
-
 class UpgradeRequest(models.Model):
     UPGRADE_TYPES = (
         ('premium_profile', 'Premium Profile'),

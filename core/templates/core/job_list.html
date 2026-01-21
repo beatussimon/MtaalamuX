@@ -40,7 +40,7 @@
                             <div class="card-body d-flex flex-column flex-md-row gap-3">
                                 <div class="flex-shrink-0">
                                     {% if item.type == 'internal' %}
-                                        <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle" alt="{{ job.professional.user.username }}'s profile photo" style="width: 60px; height: 60px; object-fit: cover;">
+                                        <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle" alt="{{ job.professional.user.username }}'s profile photo" style="width: 60px; height: 60px; object-fit: cover;">
                                     {% else %}
                                         <img src="{% static 'img/external_job_icon.png' %}" class="rounded-circle" alt="External Job Icon" style="width: 60px; height: 60px; object-fit: cover;">
                                     {% endif %}

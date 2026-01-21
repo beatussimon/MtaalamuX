@@ -270,7 +270,7 @@ def render_comment(self, comment):
     user = self.request.user
     html = f"""
     <div class="comment d-flex gap-3 mb-4" id="comment-{comment.id}">
-        <img src="{comment.user.userprofile.avatar.url if comment.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{comment.user.username}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
+        <img src="{comment.user.userprofile.avatar.url if comment.user.userprofile.avatar else static('img/default_avatar.svg')}" class="rounded-circle" alt="{comment.user.username}'s Avatar" style="width: 40px; height: 40px; object-fit: cover;">
         <div class="comment-body flex-grow-1">
             <p class="mb-1">
                 {"<a href='" + url('core:professional_detail', args=[comment.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + comment.user.username + "</a>" if comment.user.professional else f"<span class='text-dark fw-bold'>{comment.user.username}</span>"}
@@ -335,7 +335,7 @@ def render_comment(self, comment):
     for reply in comment.replies.all():
         html += f"""
         <div class="reply d-flex gap-3 mb-3 ms-4">
-            <img src="{reply.user.userprofile.avatar.url if reply.user.userprofile.avatar else static('img/default_avatar.jpg')}" class="rounded-circle" alt="{reply.user.username}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
+            <img src="{reply.user.userprofile.avatar.url if reply.user.userprofile.avatar else static('img/default_avatar.svg')}" class="rounded-circle" alt="{reply.user.username}'s Avatar" style="width: 30px; height: 30px; object-fit: cover;">
             <div class="reply-body flex-grow-1">
                 <p class="mb-1">
                     {"<a href='" + url('core:professional_detail', args=[reply.user.professional.id]) + "' class='text-dark text-decoration-none fw-bold'>" + reply.user.username + "</a>" if reply.user.professional else f"<span class='text-dark fw-bold'>{reply.user.username}</span>"}

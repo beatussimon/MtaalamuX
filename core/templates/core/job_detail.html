@@ -40,7 +40,7 @@
                     <div class="col-md-6 col-lg-3">
                         <div class="d-flex align-items-center">
                             {% if job.professional %}
-                                <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}" class="rounded-circle me-3" alt="{{ job.professional.user.username }}'s photo" style="width: 50px; height: 50px; object-fit: cover;">
+                                <img src="{% if job.professional.photo %}{{ job.professional.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle me-3" alt="{{ job.professional.user.username }}'s photo" style="width: 50px; height: 50px; object-fit: cover;">
                                 <div>
                                     <small class="text-muted d-block">Posted by</small>
                                     <a href="{% url 'core:professional_detail' job.professional.id %}" class="text-decoration-none fw-medium">{{ job.professional.user.username }}</a>

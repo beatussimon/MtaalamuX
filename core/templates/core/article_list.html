@@ -17,7 +17,7 @@
                     {% if article.image %}
                         <img src="{{ article.image.url }}" class="card-img-top rounded-top" alt="Article Image" style="height: 200px; object-fit: cover;">
                     {% else %}
-                        <img src="{% static 'img/default_article.jpg' %}" class="card-img-top rounded-top" alt="Default Article Image" style="height: 200px; object-fit: cover;">
+                        <img src="{% static 'img/default_article.svg' %}" class="card-img-top rounded-top" alt="Default Article Image" style="height: 200px; object-fit: cover;">
                     {% endif %}
                     <div class="card-body">
                         <h5 class="card-title"><a href="{% url 'core:article_detail' article.id %}" class="text-decoration-none">{{ article.title }}</a></h5>

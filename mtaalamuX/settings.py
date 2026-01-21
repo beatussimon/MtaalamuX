@@ -3,7 +3,7 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-key-for-dev'
+SECRET_KEY = 'django-insecure-change-this-in-production'
 DEBUG = True
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'mtaalamux.onrender.com']
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'your_project_name.settings')

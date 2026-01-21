@@ -44,7 +44,7 @@
             <div class="col-12 col-md-6 col-lg-4">
                 <div class="card shadow-sm professional-card h-100">
                     <div class="card-body text-center d-flex flex-column">
-                        <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_profile.jpg' %}{% endif %}"
+                        <img src="{% if professional.photo %}{{ professional.photo.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}"
                              class="rounded-circle mb-3 mx-auto" alt="{{ professional.user.username }}'s profile photo"
                              style="width: 80px; height: 80px; object-fit: cover;">
                         <h5 class="card-title mb-1">
