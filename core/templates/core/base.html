@@ -5,11 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}mtaalamuX{% endblock %} - Connecting Experts</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
     <style>
@@ -48,56 +46,55 @@
 <body class="d-flex flex-column h-100">
 
     {# ======================= NAVBAR START ======================= #}
-    <nav class="navbar navbar-expand-lg {% if site_theme == 'dark' %}navbar-dark bg-dark{% else %}navbar-light bg-light{% endif %} shadow-sm sticky-top">
+    <nav class="navbar navbar-expand-lg fixed-top">
         <div class="container">
             <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">mtaalamuX</a>
 
             {# --- Hamburger Button: Now triggers Offcanvas --- #}
-            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNavOffcanvas" aria-controls="mobileNavOffcanvas" aria-label="Toggle navigation">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNavOffcanvas" aria-controls="mobileNavOffcanvas" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             {# --- Desktop Navbar Links (Hidden on Mobile) --- #}
-            {# NOTE: These are now *outside* a collapse div, hidden below 'lg' breakpoint #}
-            <div class="d-none d-lg-flex flex-grow-1"> {# Use flex-grow-1 to push subsequent items right #}
+            <div class="d-none d-lg-flex flex-grow-1">
                 <ul class="navbar-nav me-auto align-items-lg-center">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:professional_list' %}"><i class="fas fa-users fa-fw me-1"></i>Experts</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:insights' %}"><i class="fas fa-newspaper fa-fw me-1"></i>Insights</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'core:job_list' %}"><i class="fas fa-briefcase fa-fw me-1"></i>Jobs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:professional_list' %}"><i class="fas fa-users fa-fw me-2"></i>Experts</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:insights' %}"><i class="fas fa-newspaper fa-fw me-2"></i>Insights</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'core:job_list' %}"><i class="fas fa-briefcase fa-fw me-2"></i>Jobs</a></li>
                 </ul>
 
                  <ul class="navbar-nav ms-auto align-items-lg-center">
                      {% if user.is_authenticated %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'core:post_job' %}" title="Post a Job"><i class="fas fa-plus-circle fa-fw me-1"></i>Post Job</a></li>
-                        <li class="nav-item ms-lg-2"><a class="nav-link" href="{% url 'core:dashboard' %}" title="Dashboard"><i class="fas fa-tachometer-alt fa-fw me-1"></i>Dashboard</a></li>
-                        <li class="nav-item ms-lg-2"><a class="nav-link" href="{% url 'core:messages' %}" title="Messages"><i class="fas fa-envelope fa-fw me-1"></i>Messages</a></li>
+                        <li class="nav-item me-2"><a href="{% url 'core:post_job' %}" class="btn btn-primary btn-sm" title="Post a Job"><i class="fas fa-plus-circle fa-fw me-1"></i>Post Job</a></li>
+                        <li class="nav-item me-2"><a class="nav-link" href="{% url 'core:dashboard' %}" title="Dashboard"><i class="fas fa-tachometer-alt fa-fw me-1"></i>Dashboard</a></li>
+                        <li class="nav-item me-2"><a class="nav-link" href="{% url 'core:messages' %}" title="Messages"><i class="fas fa-envelope fa-fw me-1"></i>Messages</a></li>
                         {% if user.is_staff or user.is_superuser or user.custom_admin.is_active %}
-                            <li class="nav-item ms-lg-2"><a class="nav-link" href="{% url 'core:custom_admin_dashboard' %}" title="Admin Dashboard"><i class="fas fa-user-shield fa-fw me-1"></i>Admin</a></li>
+                            <li class="nav-item me-2"><a class="nav-link" href="{% url 'core:custom_admin_dashboard' %}" title="Admin Dashboard"><i class="fas fa-user-shield fa-fw me-1"></i>Admin</a></li>
                         {% endif %}
                     {% endif %}
                 </ul>
 
                 <ul class="navbar-nav ms-lg-3 align-items-lg-center">
                      <li class="nav-item mx-1">
-                         <button id="theme-toggle-btn-desktop" class="btn btn-sm {% if site_theme == 'dark' %}btn-outline-light{% else %}btn-outline-secondary{% endif %} rounded-circle theme-toggle-btn" type="button" title="Toggle theme" aria-label="Toggle theme">
-                             <i class="fas {% if site_theme == 'dark' %}fa-sun{% else %}fa-moon{% endif %} theme-toggle-icon"></i>
+                         <button id="theme-toggle-btn-desktop" class="btn theme-toggle-btn" type="button" title="Toggle theme" aria-label="Toggle theme">
+                             <i class="fas fa-moon theme-toggle-icon"></i>
                          </button>
                      </li>
                      {% if user.is_authenticated %}
                         <li class="nav-item mx-1">
                             <a class="nav-link position-relative" href="{% url 'core:notifications' %}" title="Notifications">
-                                <i class="fas fa-bell"></i>
+                                <i class="fas fa-bell fa-lg"></i>
                                 {% if unread_notifications > 0 %}
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6em;">{{ unread_notifications }}<span class="visually-hidden">unread notifications</span></span>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-error" style="font-size: 0.6em;">{{ unread_notifications }}<span class="visually-hidden">unread notifications</span></span>
                                 {% endif %}
                             </a>
                         </li>
                         <li class="nav-item dropdown ms-lg-2">
                             <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="profileDropdownDesktop" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <img src="{% if user.userprofile.avatar %}{{ user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle me-1" alt="{{ user.username }}'s avatar" style="width: 28px; height: 28px; object-fit: cover;">
-                                <span>{{ user.username }}</span>
+                                <img src="{% if user.userprofile.avatar %}{{ user.userprofile.avatar.url }}{% else %}{% static 'img/default_avatar.svg' %}{% endif %}" class="rounded-circle me-2 avatar" alt="{{ user.username }}'s avatar" style="width: 32px; height: 32px;">
+                                <span class="fw-medium">{{ user.username }}</span>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdownDesktop">
+                            <ul class="dropdown-menu dropdown-menu-end shadow-medium">
                                 <li><a class="dropdown-item" href="{% url 'core:user_profile' %}"><i class="fas fa-user-circle fa-fw me-2"></i>My Profile</a></li>
                                 <li><a class="dropdown-item" href="{% url 'core:setup_profile' %}"><i class="fas fa-cog fa-fw me-2"></i>Settings</a></li>
                                 <li><hr class="dropdown-divider"></li>
@@ -105,8 +102,8 @@
                             </ul>
                         </li>
                     {% else %}
-                        <li class="nav-item ms-lg-2"><a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt fa-fw me-1"></i>Login</a></li>
-                        <li class="nav-item ms-lg-2"><a class="nav-link btn btn-sm {% if site_theme == 'dark' %}btn-light{% else %}btn-primary{% endif %} signup-button" href="{% url 'core:signup' %}"><i class="fas fa-user-plus fa-fw me-1"></i>Sign Up</a></li>
+                        <li class="nav-item me-2"><a class="nav-link" href="{% url 'login' %}"><i class="fas fa-sign-in-alt fa-fw me-1"></i>Login</a></li>
+                        <li class="nav-item"><a class="btn btn-primary" href="{% url 'core:signup' %}"><i class="fas fa-user-plus fa-fw me-1"></i>Sign Up</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -115,17 +112,17 @@
 
 
     {# ======================= OFFCANVAS MOBILE MENU START ======================= #}
-    <div class="offcanvas offcanvas-start {% if site_theme == 'dark' %}text-bg-dark{% endif %}" tabindex="-1" id="mobileNavOffcanvas" aria-labelledby="mobileNavOffcanvasLabel">
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileNavOffcanvas" aria-labelledby="mobileNavOffcanvasLabel">
         <div class="offcanvas-header border-bottom">
             <h5 class="offcanvas-title fw-bold" id="mobileNavOffcanvasLabel">mtaalamuX Menu</h5>
-            <button type="button" class="btn-close {% if site_theme == 'dark' %}btn-close-white{% endif %}" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
         </div>
         <div class="offcanvas-body">
             {# Optional: Utilities at top #}
              <div class="d-flex justify-content-end align-items-center mb-3">
                  <span class="small me-2">Theme:</span>
-                 <button id="theme-toggle-btn-mobile" class="btn btn-sm {% if site_theme == 'dark' %}btn-outline-light{% else %}btn-outline-secondary{% endif %} rounded-circle theme-toggle-btn" type="button" title="Toggle theme" aria-label="Toggle theme">
-                     <i class="fas {% if site_theme == 'dark' %}fa-sun{% else %}fa-moon{% endif %} theme-toggle-icon"></i>
+                 <button id="theme-toggle-btn-mobile" class="btn theme-toggle-btn" type="button" title="Toggle theme" aria-label="Toggle theme">
+                     <i class="fas fa-moon theme-toggle-icon"></i>
                  </button>
              </div>
              <hr>
@@ -156,7 +153,7 @@
                              <li><a href="{% url 'core:messages' %}"><i class="fas fa-envelope fa-fw me-1"></i>Messages</a></li>
                               <li><a href="{% url 'core:notifications' %}"><i class="fas fa-bell fa-fw me-1"></i>Notifications
                                     {% if unread_notifications > 0 %}
-                                        <span class="badge rounded-pill bg-danger ms-1">{{ unread_notifications }}</span>
+                                        <span class="badge rounded-pill bg-error ms-1">{{ unread_notifications }}</span>
                                     {% endif %}
                                  </a>
                              </li>
@@ -245,79 +242,50 @@
         });
     </script>
 
-    {# Theme toggle script (Cleaned) #}
+    {# Theme toggle script (Updated for CSS Variables) #}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const themeToggleButtons = document.querySelectorAll('.theme-toggle-btn');
             const htmlElement = document.documentElement;
-            const signupButton = document.querySelector('a.btn.signup-button'); // Ensure signup button has this class if needed
 
-            function applyThemeClasses(theme) {
+            function applyTheme(theme) {
                 const isDark = theme === 'dark';
-                htmlElement.classList.toggle('dark-mode', isDark); // The main trigger for CSS
+                htmlElement.classList.toggle('dark-mode', isDark);
 
-                // Update specific components that need explicit class changes
-                const navbar = document.querySelector('nav.navbar');
-                if (navbar) {
-                    navbar.classList.toggle('navbar-dark', isDark);
-                    navbar.classList.toggle('bg-dark', isDark);
-                    navbar.classList.toggle('navbar-light', !isDark);
-                    navbar.classList.toggle('bg-light', !isDark);
-                }
-                const offcanvas = document.querySelector('.offcanvas');
-                if (offcanvas) {
-                    offcanvas.classList.toggle('text-bg-dark', isDark);
-                }
-                const offcanvasClose = document.querySelector('.offcanvas .btn-close');
-                if (offcanvasClose) {
-                    offcanvasClose.classList.toggle('btn-close-white', isDark);
-                }
+                // Update theme toggle icons
                 themeToggleButtons.forEach(button => {
-                    button.classList.toggle('btn-outline-light', isDark);
-                    button.classList.toggle('btn-outline-secondary', !isDark);
-                    const icon = button.querySelector('.theme-toggle-icon'); // Ensure icons have this class
+                    const icon = button.querySelector('.theme-toggle-icon');
                     if (icon) {
                         icon.classList.toggle('fa-sun', isDark);
                         icon.classList.toggle('fa-moon', !isDark);
                     }
                 });
-                if (signupButton) {
-                    signupButton.classList.toggle('btn-light', isDark);
-                    signupButton.classList.toggle('btn-primary', !isDark);
-                }
-                // Footer styling is now handled by CSS rules reacting to html.dark-mode
             }
 
             function setTheme(theme) {
-                 applyThemeClasses(theme);
-                 try { localStorage.setItem('theme', theme); } catch (e) { console.warn("Could not save theme to localStorage", e); }
-                 // Optional: Send to server if needed
+                applyTheme(theme);
+                try { localStorage.setItem('theme', theme); } catch (e) { console.warn("Could not save theme to localStorage", e); }
             }
 
             // --- Initialization ---
             let initialTheme = 'light'; // Default
             try {
-                 const storedTheme = localStorage.getItem('theme');
-                 if (storedTheme) {
-                     initialTheme = storedTheme;
-                 } else {
-                      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                      if (prefersDark) initialTheme = 'dark';
-                 }
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme) {
+                    initialTheme = storedTheme;
+                } else {
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if (prefersDark) initialTheme = 'dark';
+                }
             } catch (e) {
-                 console.warn("Could not access localStorage/matchMedia", e);
-                 // Fallback: check server class only if other checks fail
-                 if (!localStorage.getItem('theme') && document.documentElement.classList.contains('dark-mode')) {
-                    initialTheme = 'dark';
-                 }
+                console.warn("Could not access localStorage/matchMedia", e);
             }
-            applyThemeClasses(initialTheme); // Apply the determined theme on load
-            // --- End Initialization ---
+            applyTheme(initialTheme); // Apply the determined theme on load
 
             // Add click listener for ALL theme buttons
             themeToggleButtons.forEach(button => {
                 button.addEventListener('click', function() {
-                    const newTheme = document.documentElement.classList.contains('dark-mode') ? 'light' : 'dark';
+                    const newTheme = htmlElement.classList.contains('dark-mode') ? 'light' : 'dark';
                     setTheme(newTheme);
                 });
             });
