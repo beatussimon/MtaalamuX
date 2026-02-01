@@ -1,0 +1,1 @@
+"""MtaalamuX Django Project"""
