@@ -24,7 +24,7 @@ api.interceptors.request.use(
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  response => response,
   async (error) => {
     const originalRequest = error.config
 
@@ -58,31 +58,39 @@ api.interceptors.response.use(
 export default api
 
 // API service functions
+
+// Auth Service
 export const authService = {
   login: (credentials) => api.post('/api/v1/auth/login/', credentials),
   register: (userData) => api.post('/api/v1/auth/register/', userData),
   refreshToken: (refresh) => api.post('/api/v1/auth/refresh/', { refresh }),
 }
 
+// User Service
 export const userService = {
   getCurrentUser: () => api.get('/api/v1/users/me/'),
   updateProfile: (data) => api.put('/api/v1/users/update_profile/', data),
+  getTierInfo: () => api.get('/api/v1/users/me/tier_info/'),
 }
 
+// Category Service
 export const categoryService = {
   getAll: () => api.get('/api/v1/categories/'),
   getWithProfessionals: () => api.get('/api/v1/categories/with_professionals/'),
 }
 
+// Professional Service
 export const professionalService = {
   getAll: (params) => api.get('/api/v1/professionals/', { params }),
   getById: (id) => api.get(`/api/v1/professionals/${id}/`),
   follow: (id) => api.post(`/api/v1/professionals/${id}/follow/`),
   getArticles: (id) => api.get(`/api/v1/professionals/${id}/articles/`),
+  getResearch: (id) => api.get(`/api/v1/professionals/${id}/research/`),
   getReviews: (id) => api.get(`/api/v1/professionals/${id}/reviews/`),
   getPortfolio: (id) => api.get(`/api/v1/professionals/${id}/portfolio/`),
 }
 
+// Article Service
 export const articleService = {
   getAll: (params) => api.get('/api/v1/articles/', { params }),
   getById: (id) => api.get(`/api/v1/articles/${id}/`),
@@ -90,28 +98,55 @@ export const articleService = {
   like: (id) => api.post(`/api/v1/articles/${id}/like/`),
   share: (id) => api.post(`/api/v1/articles/${id}/share/`),
   getComments: (id) => api.get(`/api/v1/articles/${id}/comments/`),
+  getTrending: () => api.get('/api/v1/articles/trending/'),
+  getTop: () => api.get('/api/v1/articles/top/'),
 }
 
-export const jobService = {
-  getAll: (params) => api.get('/api/v1/jobs/', { params }),
-  getById: (id) => api.get(`/api/v1/jobs/${id}/`),
-  create: (data) => api.post('/api/v1/jobs/', data),
-  getMyJobs: () => api.get('/api/v1/jobs/my_jobs/'),
+// Research Service
+export const researchService = {
+  getAll: (params) => api.get('/api/v1/research/', { params }),
+  getById: (id) => api.get(`/api/v1/research/${id}/`),
+  create: (data) => api.post('/api/v1/research/', data),
+  like: (id) => api.post(`/api/v1/research/${id}/like/`),
+  share: (id) => api.post(`/api/v1/research/${id}/share/`),
+  getTop: () => api.get('/api/v1/research/top/'),
 }
 
-export const externalJobService = {
-  getAll: (params) => api.get('/api/v1/external-jobs/', { params }),
-  getById: (id) => api.get(`/api/v1/external-jobs/${id}/`),
-  create: (data) => api.post('/api/v1/external-jobs/', data),
+// Consultation Service
+export const consultationService = {
+  getAll: (params) => api.get('/api/v1/consultations/', { params }),
+  getById: (id) => api.get(`/api/v1/consultations/${id}/`),
+  create: (data) => api.post('/api/v1/consultations/', data),
+  getMyConsultations: () => api.get('/api/v1/consultations/my_consultations/'),
+  getAsClient: () => api.get('/api/v1/consultations/as_client/'),
+  getAsExpert: () => api.get('/api/v1/consultations/as_expert/'),
 }
 
-export const notificationService = {
-  getAll: () => api.get('/api/v1/notifications/'),
-  getUnread: () => api.get('/api/v1/notifications/unread/'),
-  markAsRead: (id) => api.post(`/api/v1/notifications/${id}/mark_read/`),
-  markAllAsRead: () => api.post('/api/v1/notifications/mark_all_read/'),
+// Consultation Task Service
+export const consultationTaskService = {
+  getAll: (params) => api.get('/api/v1/consultation-tasks/', { params }),
+  getById: (id) => api.get(`/api/v1/consultation-tasks/${id}/`),
+  create: (data) => api.post('/api/v1/consultation-tasks/', data),
+  getMyTasks: () => api.get('/api/v1/consultation-tasks/my_tasks/'),
+  apply: (id, data) => api.post(`/api/v1/consultation-tasks/${id}/apply/`, data),
 }
 
+// Consultation Application Service
+export const consultationApplicationService = {
+  getAll: (params) => api.get('/api/v1/consultation-applications/', { params }),
+  getMyApplications: () => api.get('/api/v1/consultation-applications/my_applications/'),
+  getReceived: () => api.get('/api/v1/consultation-applications/received/'),
+}
+
+// Conversation Service
+export const conversationService = {
+  getAll: () => api.get('/api/v1/conversations/'),
+  getById: (id) => api.get(`/api/v1/conversations/${id}/`),
+  create: (data) => api.post('/api/v1/conversations/', data),
+  getMessages: (id) => api.get(`/api/v1/conversations/${id}/messages/`),
+}
+
+// Message Service
 export const messageService = {
   getInbox: () => api.get('/api/v1/messages/inbox/'),
   getSent: () => api.get('/api/v1/messages/sent/'),
@@ -121,7 +156,98 @@ export const messageService = {
   markAllAsRead: () => api.post('/api/v1/messages/mark_all_read/'),
 }
 
+// Payment Method Service
+export const paymentMethodService = {
+  getAll: () => api.get('/api/v1/payment-methods/'),
+  getById: (id) => api.get(`/api/v1/payment-methods/${id}/`),
+}
+
+// Payment Record Service
+export const paymentRecordService = {
+  getAll: (params) => api.get('/api/v1/payment-records/', { params }),
+  create: (data) => api.post('/api/v1/payment-records/', data),
+}
+
+// Digital Item Service
+export const digitalItemService = {
+  getAll: (params) => api.get('/api/v1/digital-items/', { params }),
+  getById: (id) => api.get(`/api/v1/digital-items/${id}/`),
+  create: (data) => api.post('/api/v1/digital-items/', data),
+  getMyItems: () => api.get('/api/v1/digital-items/my_items/'),
+}
+
+// Merch Service
+export const merchService = {
+  getAll: (params) => api.get('/api/v1/merch/', { params }),
+  getById: (id) => api.get(`/api/v1/merch/${id}/`),
+  create: (data) => api.post('/api/v1/merch/', data),
+  getMyItems: () => api.get('/api/v1/merch/my_items/'),
+}
+
+// Purchase Service
+export const purchaseService = {
+  getAll: (params) => api.get('/api/v1/purchases/', { params }),
+  getMyPurchases: () => api.get('/api/v1/purchases/my_purchases/'),
+}
+
+// Upgrade Request Service
+export const upgradeRequestService = {
+  getAll: (params) => api.get('/api/v1/upgrade-requests/', { params }),
+  create: (data) => api.post('/api/v1/upgrade-requests/', data),
+}
+
+// Verification Request Service
+export const verificationRequestService = {
+  getAll: (params) => api.get('/api/v1/verification-requests/', { params }),
+  create: (data) => api.post('/api/v1/verification-requests/', data),
+}
+
+// Job Service
+export const jobService = {
+  getAll: (params) => api.get('/api/v1/jobs/', { params }),
+  getById: (id) => api.get(`/api/v1/jobs/${id}/`),
+  create: (data) => api.post('/api/v1/jobs/', data),
+  getMyJobs: () => api.get('/api/v1/jobs/my_jobs/'),
+}
+
+// External Job Service
+export const externalJobService = {
+  getAll: (params) => api.get('/api/v1/external-jobs/', { params }),
+  getById: (id) => api.get(`/api/v1/external-jobs/${id}/`),
+  create: (data) => api.post('/api/v1/external-jobs/', data),
+}
+
+// Notification Service
+export const notificationService = {
+  getAll: () => api.get('/api/v1/notifications/'),
+  getUnread: () => api.get('/api/v1/notifications/unread/'),
+  markAsRead: (id) => api.post(`/api/v1/notifications/${id}/mark_read/`),
+  markAllAsRead: () => api.post('/api/v1/notifications/mark_all_read/'),
+}
+
+// Feedback Service
 export const feedbackService = {
   create: (data) => api.post('/api/v1/feedback/', data),
   getAll: (params) => api.get('/api/v1/feedback/', { params }),
+}
+
+// FAQ Service
+export const faqService = {
+  getAll: (params) => api.get('/api/v1/faqs/', { params }),
+  getById: (id) => api.get(`/api/v1/faqs/${id}/`),
+}
+
+// Top Expert Service
+export const topExpertService = {
+  getAll: () => api.get('/api/v1/top-experts/'),
+}
+
+// Featured Content Service
+export const featuredContentService = {
+  getAll: (params) => api.get('/api/v1/featured-content/', { params }),
+}
+
+// Homepage Service
+export const homepageService = {
+  getData: () => api.get('/api/v1/homepage/'),
 }

@@ -5,23 +5,25 @@ import {
   Sun,
   Moon,
   Menu,
-  X,
   Bell,
   MessageSquare,
   User,
   LogOut,
   LayoutDashboard,
-  Settings
+  Settings,
+  Crown,
+  Zap,
+  Shield
 } from 'lucide-react'
-import { useAuthStore, useThemeStore, useUIStore } from '../store'
+import { useAuthStore, useThemeStore, useUIStore, tierHelpers } from '../store'
 import { notificationService } from '../services/api'
 
 function Header() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout, tierInfo } = useAuthStore()
   const { theme, toggleTheme } = useThemeStore()
-  const { openSidebar, sidebarOpen, closeSidebar } = useUIStore()
+  const { openSidebar } = useUIStore()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
@@ -49,10 +51,16 @@ function Header() {
     setShowUserMenu(false)
   }
 
+  const upgradeCTA = tierHelpers.getUpgradeCTA(tierInfo)
+  const displayTier = tierHelpers.getDisplayTier(tierInfo)
+  const isPremium = tierHelpers.isPremium(tierInfo)
+  const isProfessional = tierHelpers.isProfessional(tierInfo)
+
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Professionals', path: '/professionals' },
     { name: 'Articles', path: '/articles' },
+    { name: 'Research', path: '/research' },
     { name: 'Jobs', path: '/jobs' },
     { name: 'FAQ', path: '/faq' },
   ]
@@ -105,6 +113,34 @@ function Header() {
 
             {isAuthenticated ? (
               <>
+                {/* Tier indicator / Upgrade CTA */}
+                {upgradeCTA && (
+                  <Link
+                    to="/upgrade"
+                    className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      upgradeCTA === 'Premium'
+                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                        : 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400'
+                    }`}
+                  >
+                    {upgradeCTA === 'Premium' ? (
+                      <Crown className="w-4 h-4" />
+                    ) : (
+                      <Zap className="w-4 h-4" />
+                    )}
+                    <span className="hidden sm:inline">{upgradeCTA}</span>
+                  </Link>
+                )}
+
+                {/* Messages */}
+                <Link
+                  to="/messages"
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-800 transition-colors relative"
+                  aria-label="Messages"
+                >
+                  <MessageSquare className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </Link>
+
                 {/* Notifications */}
                 <div className="relative">
                   <button
@@ -178,11 +214,31 @@ function Header() {
                     className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-800 transition-colors"
                   >
                     <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900 rounded-full flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                      {user?.photo ? (
+                        <img
+                          src={user.photo}
+                          alt={user.username}
+                          className="w-8 h-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+                      )}
                     </div>
                     <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
                       {user?.username}
                     </span>
+                    {displayTier && (
+                      <span className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        isPremium
+                          ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                          : isProfessional
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      }`}>
+                        {isPremium && <Shield className="w-3 h-3 mr-1" />}
+                        {displayTier}
+                      </span>
+                    )}
                   </button>
 
                   {/* User dropdown */}
@@ -192,8 +248,27 @@ function Header() {
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-800 rounded-xl shadow-lg border border-gray-200 dark:border-dark-700 overflow-hidden"
+                        className="absolute right-0 mt-2 w-56 bg-white dark:bg-dark-800 rounded-xl shadow-lg border border-gray-200 dark:border-dark-700 overflow-hidden"
                       >
+                        <div className="px-4 py-3 border-b border-gray-200 dark:border-dark-700">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {user?.username}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {user?.email}
+                          </p>
+                          {tierInfo && (
+                            <span className={`inline-flex items-center mt-2 px-2 py-0.5 rounded text-xs font-medium ${
+                              isPremium
+                                ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
+                                : isProfessional
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                            }`}>
+                              {displayTier} Tier
+                            </span>
+                          )}
+                        </div>
                         <Link
                           to="/dashboard"
                           className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
@@ -218,6 +293,24 @@ function Header() {
                           <MessageSquare className="w-4 h-4 text-gray-500" />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Messages</span>
                         </Link>
+                        <Link
+                          to="/settings"
+                          className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+                          onClick={() => setShowUserMenu(false)}
+                        >
+                          <Settings className="w-4 h-4 text-gray-500" />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Settings</span>
+                        </Link>
+                        {upgradeCTA && (
+                          <Link
+                            to="/upgrade"
+                            className="flex items-center space-x-2 px-4 py-3 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors text-primary-600 dark:text-primary-400"
+                            onClick={() => setShowUserMenu(false)}
+                          >
+                            <Crown className="w-4 h-4" />
+                            <span className="text-sm font-medium">{upgradeCTA} to Premium</span>
+                          </Link>
+                        )}
                         <hr className="border-gray-200 dark:border-dark-700" />
                         <button
                           onClick={handleLogout}

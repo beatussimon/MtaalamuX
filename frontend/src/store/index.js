@@ -11,12 +11,15 @@ export const useAuthStore = create(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      tierInfo: null, // { tier, display_tier, is_basic, is_professional, is_premium, can_initiate_consultation, can_post_content, can_sell_items }
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
       setToken: (token) => {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         set({ token })
       },
+
+      setTierInfo: (tierInfo) => set({ tierInfo }),
 
       login: async (credentials) => {
         set({ isLoading: true, error: null })
@@ -29,6 +32,14 @@ export const useAuthStore = create(
           // Fetch user data
           const userResponse = await api.get('/api/v1/users/me/')
           set({ user: userResponse.data })
+          
+          // Fetch tier info
+          try {
+            const tierResponse = await api.get('/api/v1/users/me/tier_info/')
+            set({ tierInfo: tierResponse.data })
+          } catch (tierError) {
+            console.error('Failed to fetch tier info:', tierError)
+          }
           
           return { success: true }
         } catch (error) {
@@ -53,7 +64,7 @@ export const useAuthStore = create(
 
       logout: () => {
         delete api.defaults.headers.common['Authorization']
-        set({ user: null, token: null, isAuthenticated: false })
+        set({ user: null, token: null, isAuthenticated: false, tierInfo: null })
       },
 
       checkAuth: async () => {
@@ -64,6 +75,14 @@ export const useAuthStore = create(
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
           const response = await api.get('/api/v1/users/me/')
           set({ user: response.data, isAuthenticated: true })
+          
+          // Fetch tier info
+          try {
+            const tierResponse = await api.get('/api/v1/users/me/tier_info/')
+            set({ tierInfo: tierResponse.data })
+          } catch (tierError) {
+            console.error('Failed to fetch tier info:', tierError)
+          }
         } catch (error) {
           get().logout()
         }
@@ -120,3 +139,20 @@ export const useUIStore = create((set) => ({
   openModal: (content) => set({ modalOpen: true, modalContent: content }),
   closeModal: () => set({ modalOpen: false, modalContent: null }),
 }))
+
+// Tier-aware helper functions
+export const tierHelpers = {
+  isBasic: (tierInfo) => tierInfo?.is_basic || tierInfo?.tier === 'basic',
+  isProfessional: (tierInfo) => tierInfo?.is_professional || tierInfo?.tier === 'professional',
+  isPremium: (tierInfo) => tierInfo?.is_premium || tierInfo?.tier === 'premium',
+  canInitiateConsultation: (tierInfo) => tierInfo?.can_initiate_consultation || false,
+  canPostContent: (tierInfo) => tierInfo?.can_post_content || false,
+  canSellItems: (tierInfo) => tierInfo?.can_sell_items || false,
+  getUpgradeCTA: (tierInfo) => {
+    if (!tierInfo) return 'Upgrade'
+    if (tierInfo.tier === 'basic') return 'Upgrade'
+    if (tierInfo.tier === 'professional') return 'Premium'
+    return null // Already premium
+  },
+  getDisplayTier: (tierInfo) => tierInfo?.display_tier || 'Basic',
+}
