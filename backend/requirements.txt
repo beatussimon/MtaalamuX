@@ -33,3 +33,6 @@ factory-boy>=3.3.0
 # Utilities
 django-filter>=23.3
 markdown>=3.5.0
+
+gunicorn
+

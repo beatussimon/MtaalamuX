@@ -180,7 +180,10 @@ SPECTACULAR_SETTINGS = {
 }
 
 # CORS settings
-CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+CORS_ALLOWED_ORIGINS = os.getenv(
+    'CORS_ALLOWED_ORIGINS',
+    'https://mtx.today,http://localhost:3000,http://127.0.0.1:3000'
+).split(',')
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # File upload settings
@@ -227,3 +230,5 @@ LOGOUT_REDIRECT_URL = '/api/v1/auth/login/'
 
 # Contact email
 CONTACT_EMAIL = os.getenv('CONTACT_EMAIL', 'support@mtaalamux.com')
+
+
