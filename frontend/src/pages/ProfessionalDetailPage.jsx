@@ -130,14 +130,14 @@ function ProfessionalDetailPage() {
         <div className="card p-4 text-center">
           <Star className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {professional.average_rating?.toFixed(1) || '0.0'}
+            {professional.avg_rating?.toFixed(1) || '0.0'}
           </p>
           <p className="text-sm text-gray-500">Rating</p>
         </div>
         <div className="card p-4 text-center">
           <Users className="w-6 h-6 mx-auto mb-2 text-primary-500" />
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {professional.follower_count || 0}
+            {professional.followers_count || 0}
           </p>
           <p className="text-sm text-gray-500">Followers</p>
         </div>

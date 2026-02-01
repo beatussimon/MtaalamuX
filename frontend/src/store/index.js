@@ -8,6 +8,7 @@ export const useAuthStore = create(
     (set, get) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
@@ -18,6 +19,8 @@ export const useAuthStore = create(
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         set({ token })
       },
+      
+      setRefreshToken: (refreshToken) => set({ refreshToken }),
 
       setTierInfo: (tierInfo) => set({ tierInfo }),
 
@@ -27,7 +30,14 @@ export const useAuthStore = create(
           const response = await api.post('/api/v1/auth/login/', credentials)
           const { access, refresh } = response.data
           api.defaults.headers.common['Authorization'] = `Bearer ${access}`
-          set({ token: access, isAuthenticated: true, isLoading: false })
+          
+          // Store both tokens (refresh token is needed for token rotation)
+          set({ 
+            token: access, 
+            refreshToken: refresh || null,
+            isAuthenticated: true, 
+            isLoading: false 
+          })
           
           // Fetch user data
           const userResponse = await api.get('/api/v1/users/me/')
@@ -64,7 +74,7 @@ export const useAuthStore = create(
 
       logout: () => {
         delete api.defaults.headers.common['Authorization']
-        set({ user: null, token: null, isAuthenticated: false, tierInfo: null })
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false, tierInfo: null })
       },
 
       checkAuth: async () => {
@@ -92,7 +102,7 @@ export const useAuthStore = create(
     }),
     {
       name: 'auth-storage',
-      partialize: (state) => ({ token: state.token }),
+      partialize: (state) => ({ token: state.token, refreshToken: state.refreshToken }),
     }
   )
 )
@@ -142,17 +152,35 @@ export const useUIStore = create((set) => ({
 
 // Tier-aware helper functions
 export const tierHelpers = {
-  isBasic: (tierInfo) => tierInfo?.is_basic || tierInfo?.tier === 'basic',
-  isProfessional: (tierInfo) => tierInfo?.is_professional || tierInfo?.tier === 'professional',
-  isPremium: (tierInfo) => tierInfo?.is_premium || tierInfo?.tier === 'premium',
-  canInitiateConsultation: (tierInfo) => tierInfo?.can_initiate_consultation || false,
-  canPostContent: (tierInfo) => tierInfo?.can_post_content || false,
-  canSellItems: (tierInfo) => tierInfo?.can_sell_items || false,
+  isBasic: (tierInfo) => tierInfo?.is_basic === true || tierInfo?.tier === 'basic',
+  isProfessional: (tierInfo) => tierInfo?.is_professional === true || tierInfo?.tier === 'professional',
+  isPremium: (tierInfo) => tierInfo?.is_premium === true || tierInfo?.tier === 'premium',
+  canInitiateConsultation: (tierInfo) => tierInfo?.can_initiate_consultation === true || 
+    ['professional', 'premium'].includes(tierInfo?.tier),
+  canPostContent: (tierInfo) => tierInfo?.can_post_content === true || tierInfo?.tier === 'premium',
+  canSellItems: (tierInfo) => tierInfo?.can_sell_items === true || tierInfo?.tier === 'premium',
+  isVerified: (tierInfo) => tierInfo?.is_verified === true,
   getUpgradeCTA: (tierInfo) => {
     if (!tierInfo) return 'Upgrade'
     if (tierInfo.tier === 'basic') return 'Upgrade'
     if (tierInfo.tier === 'professional') return 'Premium'
     return null // Already premium
   },
-  getDisplayTier: (tierInfo) => tierInfo?.display_tier || 'Basic',
+  getDisplayTier: (tierInfo) => tierInfo?.display_tier || tierInfo?.tier?.charAt(0).toUpperCase() + tierInfo?.tier?.slice(1) || 'Basic',
+  // Helper to check if user can access a feature based on tier
+  canAccess: (tierInfo, feature) => {
+    if (!tierInfo) return false
+    switch (feature) {
+      case 'consultation':
+        return tierHelpers.canInitiateConsultation(tierInfo)
+      case 'post_content':
+        return tierHelpers.canPostContent(tierInfo)
+      case 'sell_items':
+        return tierHelpers.canSellItems(tierInfo)
+      case 'messages':
+        return tierHelpers.isProfessional(tierInfo)
+      default:
+        return false
+    }
+  },
 }

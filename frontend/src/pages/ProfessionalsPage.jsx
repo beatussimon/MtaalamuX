@@ -287,7 +287,7 @@ function ProfessionalsPage() {
                     <div className="flex items-center space-x-1">
                       <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                       <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {professional.average_rating?.toFixed(1) || '0.0'}
+                        {professional.avg_rating?.toFixed(1) || '0.0'}
                       </span>
                       {professional.review_count > 0 && (
                         <span className="text-xs text-gray-500">({professional.review_count})</span>
@@ -295,7 +295,7 @@ function ProfessionalsPage() {
                     </div>
                     <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
                       <Users className="w-4 h-4" />
-                      <span>{professional.follower_count || 0}</span>
+                      <span>{professional.followers_count || 0}</span>
                     </div>
                   </div>
                 </div>

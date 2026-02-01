@@ -43,6 +43,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password2')
         user = User.objects.create_user(**validated_data)
+        # Auto-create user profile for new users
+        from .models import UserProfile
+        UserProfile.objects.get_or_create(user=user)
         return user
 
 
@@ -139,9 +142,9 @@ class ProfessionalListSerializer(serializers.ModelSerializer):
     """Serializer for listing professionals"""
     user = UserSerializer(read_only=True)
     field = CategorySimpleSerializer(read_only=True)
-    follower_count = serializers.IntegerField(read_only=True)
-    average_rating = serializers.FloatField(read_only=True)
-    article_count = serializers.IntegerField(read_only=True)
+    followers_count = serializers.SerializerMethodField()
+    avg_rating = serializers.SerializerMethodField()
+    article_count = serializers.SerializerMethodField()
     has_verification = serializers.SerializerMethodField()
     
     class Meta:
@@ -149,8 +152,24 @@ class ProfessionalListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user', 'field', 'subfield', 'location', 'skills',
             'photo', 'bio', 'is_verified', 'verification_level', 'has_verification',
-            'follower_count', 'average_rating', 'article_count', 'is_featured'
+            'followers_count', 'avg_rating', 'article_count', 'is_featured'
         ]
+    
+    def get_followers_count(self, obj):
+        # Use annotation if available, otherwise use model property
+        if hasattr(obj, '_followers_count'):
+            return obj._followers_count
+        return obj.follower_count
+    
+    def get_avg_rating(self, obj):
+        # Use annotation if available, otherwise use model property
+        if hasattr(obj, '_avg_rating'):
+            return obj._avg_rating
+        return obj.average_rating
+    
+    def get_article_count(self, obj):
+        # Use model property directly
+        return obj.article_count
     
     def get_has_verification(self, obj):
         return obj.has_verification

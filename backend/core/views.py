@@ -6,9 +6,9 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
-from django.db.models import Q, Count, Avg
+from django.db.models import Q, Count, Avg, F
 from django.db.models.functions import Coalesce
-from django.db.models import FloatField, ExpressionWrapper
+from django.db.models import FloatField, ExpressionWrapper, IntegerField
 from django.utils import timezone
 from .models import (
     UserProfile, Category, Professional, PortfolioItem, Message,
@@ -172,45 +172,50 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
         return ProfessionalSerializer
     
     def get_queryset(self):
-        queryset = Professional.objects.filter(is_verified=True)
-        
-        # Filter by category
-        category = self.request.query_params.get('category')
-        if category:
-            queryset = queryset.filter(field__name__iexact=category)
-        
-        # Search
-        query = self.request.query_params.get('q')
-        if query:
-            queryset = queryset.filter(
-                Q(field__name__icontains=query) |
-                Q(subfield__icontains=query) |
-                Q(location__icontains=query) |
-                Q(skills__icontains=query)
-            ).distinct()
-        
-        # Filter by verification level
-        verification = self.request.query_params.get('verification')
-        if verification:
-            queryset = queryset.filter(verification_level=verification)
-        
-        # Filter featured
-        featured = self.request.query_params.get('featured')
-        if featured and featured.lower() == 'true':
-            queryset = queryset.filter(is_featured=True)
-        
-        # Annotate with counts
-        # Use ExpressionWrapper to handle mixed types (Avg returns float, default 0 is int)
-        queryset = queryset.annotate(
-            follower_count=Count('followers', distinct=True),
-            average_rating=ExpressionWrapper(
-                Coalesce(Avg('reviews__rating'), 0.0),
-                output_field=FloatField()
-            ),
-            article_count=Count('articles', distinct=True)
-        )
-        
-        return queryset
+        try:
+            queryset = Professional.objects.filter(is_verified=True)
+            
+            # Filter by category
+            category = self.request.query_params.get('category')
+            if category:
+                queryset = queryset.filter(field__name__iexact=category)
+            
+            # Search
+            query = self.request.query_params.get('q')
+            if query:
+                queryset = queryset.filter(
+                    Q(field__name__icontains=query) |
+                    Q(subfield__icontains=query) |
+                    Q(location__icontains=query) |
+                    Q(skills__icontains=query)
+                ).distinct()
+            
+            # Filter by verification level
+            verification = self.request.query_params.get('verification')
+            if verification:
+                queryset = queryset.filter(verification_level=verification)
+            
+            # Filter featured
+            featured = self.request.query_params.get('featured')
+            if featured and featured.lower() == 'true':
+                queryset = queryset.filter(is_featured=True)
+            
+            # Annotate with counts using underscore prefix to avoid conflict with model properties
+            # The serializer will check for these annotations first, then fall back to model properties
+            queryset = queryset.annotate(
+                _followers_count=Count('followers', distinct=True),
+                _avg_rating=ExpressionWrapper(
+                    Coalesce(Avg('reviews__rating'), 0.0),
+                    output_field=FloatField()
+                )
+            )
+            
+            return queryset
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in ProfessionalViewSet.get_queryset: {str(e)}")
+            return Professional.objects.none()
     
     def get_permissions(self):
         if self.action == 'list':
@@ -302,7 +307,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """ViewSet for Conversation model"""
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
-    permission_classes = [IsAuthenticated, IsProfessionalUser]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         return Conversation.objects.filter(participants=self.request.user)
@@ -322,8 +327,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     """ViewSet for Message model"""
     queryset = Message.objects.all()
-    permission_classes = [IsAuthenticated, IsProfessionalUser]
-    throttle_classes = [MessageThrottle]
+    permission_classes = [IsAuthenticated]
+    # Throttling disabled - not configured in settings
+    # throttle_classes = [MessageThrottle]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -334,8 +340,9 @@ class MessageViewSet(viewsets.ModelViewSet):
         conversation_id = self.kwargs.get('conversation_pk')
         if conversation_id:
             return Message.objects.filter(conversation_id=conversation_id)
+        # For direct messages, filter by conversations the user participates in
         return Message.objects.filter(
-            Q(sender=self.request.user) | Q(recipient=self.request.user)
+            Q(conversation__participants=self.request.user)
         )
     
     def perform_create(self, serializer):
@@ -344,18 +351,37 @@ class MessageViewSet(viewsets.ModelViewSet):
             conversation = get_object_or_404(Conversation, id=conversation_id)
             serializer.save(conversation=conversation, sender=self.request.user)
         else:
-            serializer.save(sender=self.request.user)
+            # For direct messages, create or get conversation
+            recipient_id = self.request.data.get('recipient_id')
+            if recipient_id:
+                from django.contrib.auth.models import User
+                recipient = get_object_or_404(User, id=recipient_id)
+                # Find or create conversation between these users
+                conversation = Conversation.objects.filter(
+                    participants=self.request.user
+                ).filter(
+                    participants=recipient
+                ).first()
+                if not conversation:
+                    conversation = Conversation.objects.create(
+                        subject=f'Chat with {recipient.username}',
+                        created_by=self.request.user
+                    )
+                    conversation.participants.add(self.request.user, recipient)
+                serializer.save(conversation=conversation, sender=self.request.user)
+            else:
+                serializer.save(sender=self.request.user)
     
     @action(detail=False, methods=['get'])
     def inbox(self, request):
-        """Get inbox messages"""
-        messages = Message.objects.filter(recipient=request.user).order_by('-timestamp')
-        serializer = MessageSerializer(messages, many=True)
+        """Get inbox messages - actually returns conversations"""
+        conversations = Conversation.objects.filter(participants=request.user).order_by('-updated_at')
+        serializer = ConversationSerializer(conversations, many=True, context={'request': request})
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def sent(self, request):
-        """Get sent messages"""
+        """Get sent messages - returns user's messages across all conversations"""
         messages = Message.objects.filter(sender=request.user).order_by('-timestamp')
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
@@ -367,10 +393,17 @@ class MessageViewSet(viewsets.ModelViewSet):
         if not other_user_id:
             return Response({'error': 'user_id required'}, status=400)
         
-        messages = Message.objects.filter(
-            (Q(sender=request.user) & Q(recipient_id=other_user_id)) |
-            (Q(sender_id=other_user_id) & Q(recipient=request.user))
-        ).order_by('timestamp')
+        # Find conversation between these users
+        conversations = Conversation.objects.filter(
+            participants=request.user
+        ).filter(
+            participants=other_user_id
+        )
+        
+        if not conversations.exists():
+            return Response([])
+        
+        messages = conversations.first().messages.all().order_by('timestamp')
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
     
@@ -390,7 +423,8 @@ class MessageViewSet(viewsets.ModelViewSet):
 class ArticleViewSet(viewsets.ModelViewSet):
     """ViewSet for Article model"""
     queryset = Article.objects.all()
-    throttle_classes = [ArticleCreateThrottle]
+    # Throttling disabled - not configured in settings
+    # throttle_classes = [ArticleCreateThrottle]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -469,7 +503,12 @@ class ArticleViewSet(viewsets.ModelViewSet):
         """Get trending articles"""
         articles = Article.objects.filter(
             is_published=True
-        ).order_by('-engagement_score')[:10]
+        ).annotate(
+            calculated_score=ExpressionWrapper(
+                (Count('likes', distinct=True) * 2) + Count('views') + (Count('shares') * 3),
+                output_field=IntegerField()
+            )
+        ).order_by('-calculated_score')[:10]
         serializer = ArticleListSerializer(articles, many=True)
         return Response(serializer.data)
     
@@ -478,7 +517,12 @@ class ArticleViewSet(viewsets.ModelViewSet):
         """Get top articles"""
         articles = Article.objects.filter(
             is_published=True, is_featured=True
-        ).order_by('-publish_date')[:10]
+        ).annotate(
+            calculated_score=ExpressionWrapper(
+                (Count('likes', distinct=True) * 2) + Count('views') + (Count('shares') * 3),
+                output_field=IntegerField()
+            )
+        ).order_by('-calculated_score', '-publish_date')[:10]
         serializer = ArticleListSerializer(articles, many=True)
         return Response(serializer.data)
 
@@ -490,7 +534,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
 class ResearchViewSet(viewsets.ModelViewSet):
     """ViewSet for Research model"""
     queryset = Research.objects.all()
-    throttle_classes = [ArticleCreateThrottle]
+    # Throttling disabled - not configured in settings
+    # throttle_classes = [ArticleCreateThrottle]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -555,7 +600,12 @@ class ResearchViewSet(viewsets.ModelViewSet):
         """Get top research"""
         research = Research.objects.filter(
             status='published', is_featured=True
-        ).order_by('-engagement_score')[:10]
+        ).annotate(
+            calculated_score=ExpressionWrapper(
+                (Count('likes', distinct=True) * 3) + (Count('views') * 2) + Count('shares'),
+                output_field=IntegerField()
+            )
+        ).order_by('-calculated_score')[:10]
         serializer = ResearchListSerializer(research, many=True)
         return Response(serializer.data)
 
@@ -567,7 +617,7 @@ class ResearchViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet for Comment model"""
     queryset = Comment.objects.all()
-    permission_classes = [IsAuthenticated, IsProfessionalUser]
+    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -613,8 +663,9 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ServiceReviewViewSet(viewsets.ModelViewSet):
     """ViewSet for ServiceReview model"""
     queryset = ServiceReview.objects.all()
-    permission_classes = [IsAuthenticated, IsProfessionalUser]
-    throttle_classes = [ReviewThrottle]
+    permission_classes = [IsAuthenticated]
+    # Throttling disabled - not configured in settings
+    # throttle_classes = [ReviewThrottle]
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -869,7 +920,7 @@ class ConsultationApplicationViewSet(viewsets.ModelViewSet):
     """ViewSet for ConsultationApplication model"""
     queryset = ConsultationApplication.objects.all()
     serializer_class = ConsultationApplicationSerializer
-    permission_classes = [IsAuthenticated, IsProfessionalUser]
+    permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
         return ConsultationApplication.objects.filter(applicant=self.request.user)
@@ -1185,46 +1236,79 @@ class HomepageView(views.APIView):
             'statistics': {},
         }
         
-        # Featured experts (verified professionals)
-        featured_experts = Professional.objects.filter(
-            is_verified=True, is_featured=True
-        ).annotate(
-            follower_count=Count('followers')
-        ).order_by('-follower_count')[:6]
-        data['featured_experts'] = ProfessionalListSerializer(featured_experts, many=True).data
-        
-        # Top research
-        top_research = Research.objects.filter(
-            status='published'
-        ).order_by('-engagement_score')[:5]
-        data['top_research'] = ResearchListSerializer(top_research, many=True).data
-        
-        # Trending articles
-        trending_articles = Article.objects.filter(
-            is_published=True
-        ).order_by('-engagement_score')[:5]
-        data['trending_articles'] = ArticleListSerializer(trending_articles, many=True).data
-        
-        # Statistics
-        data['statistics'] = {
-            'total_experts': Professional.objects.filter(is_verified=True).count(),
-            'total_articles': Article.objects.filter(is_published=True).count(),
-            'total_research': Research.objects.filter(status='published').count(),
-            'total_consultations': Consultation.objects.count(),
-        }
-        
-        # For authenticated users, add personalized data
-        if request.user.is_authenticated:
-            profile = getattr(request.user, 'profile', None)
-            if profile:
-                data['user_tier'] = profile.tier
-                data['display_tier'] = profile.display_tier
-                
-                # Add ongoing consultations
-                ongoing = Consultation.objects.filter(
-                    Q(client=request.user) | Q(expert__user=request.user),
-                    status__in=['pending', 'accepted', 'in_progress']
-                ).count()
-                data['ongoing_consultations'] = ongoing
-        
-        return Response(data)
+        try:
+            # Featured experts (verified professionals)
+            # Using underscore prefix for annotations to avoid conflict with model properties
+            featured_experts = Professional.objects.filter(
+                is_verified=True, is_featured=True
+            ).annotate(
+                _followers_count=Count('followers', distinct=True),
+                _avg_rating=Coalesce(Avg('reviews__rating'), 0.0, output_field=FloatField())
+            ).order_by('-_followers_count')[:6]
+            data['featured_experts'] = ProfessionalListSerializer(featured_experts, many=True).data
+            
+            # Top research - use database annotation instead of property
+            # Note: views and shares are integer fields, likes is M2M
+            top_research = Research.objects.filter(
+                status='published'
+            ).annotate(
+                calculated_score=ExpressionWrapper(
+                    (Count('likes', distinct=True) * 3) + (F('views') * 2) + F('shares'),
+                    output_field=IntegerField()
+                )
+            ).order_by('-calculated_score')[:5]
+            data['top_research'] = ResearchListSerializer(top_research, many=True).data
+            
+            # Trending articles - use database annotation instead of property
+            # Note: views and shares are integer fields, likes is M2M
+            trending_articles = Article.objects.filter(
+                is_published=True
+            ).annotate(
+                calculated_score=ExpressionWrapper(
+                    (Count('likes', distinct=True) * 2) + F('views') + (F('shares') * 3),
+                    output_field=IntegerField()
+                )
+            ).order_by('-calculated_score')[:5]
+            data['trending_articles'] = ArticleListSerializer(trending_articles, many=True).data
+            
+            # Statistics
+            data['statistics'] = {
+                'total_experts': Professional.objects.filter(is_verified=True).count(),
+                'total_articles': Article.objects.filter(is_published=True).count(),
+                'total_research': Research.objects.filter(status='published').count(),
+                'total_consultations': Consultation.objects.count(),
+            }
+            
+            # For authenticated users, add personalized data
+            if request.user.is_authenticated:
+                profile = getattr(request.user, 'profile', None)
+                if profile:
+                    data['user_tier'] = profile.tier
+                    data['display_tier'] = profile.display_tier
+                    
+                    # Add ongoing consultations
+                    ongoing = Consultation.objects.filter(
+                        Q(client=request.user) | Q(expert__user=request.user),
+                        status__in=['pending', 'accepted', 'in_progress']
+                    ).count()
+                    data['ongoing_consultations'] = ongoing
+            
+            return Response(data)
+        except Exception as e:
+            # Log the error for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in HomepageView: {str(e)}")
+            # Return minimal safe data
+            return Response({
+                'featured_experts': [],
+                'top_research': [],
+                'trending_articles': [],
+                'statistics': {
+                    'total_experts': 0,
+                    'total_articles': 0,
+                    'total_research': 0,
+                    'total_consultations': 0,
+                },
+                'error': 'Failed to load homepage data'
+            }, status=500)

@@ -36,7 +36,7 @@ function Layout() {
             <motion.aside
               initial={false}
               animate={{ x: sidebarOpen ? 0 : '-100%' }}
-              className="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-dark-800 shadow-lg lg:shadow-none"
+              className="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-dark-800 shadow-lg lg:shadow-none flex-shrink-0"
             >
               <Sidebar />
             </motion.aside>
@@ -44,12 +44,8 @@ function Layout() {
         )}
 
         {/* Main content */}
-        <main
-          className={`flex-1 min-h-screen ${
-            isAuthenticated ? 'lg:ml-0' : ''
-          }`}
-        >
-          <div className="container mx-auto px-4 py-8">
+        <main className="flex-1 min-h-screen w-full">
+          <div className="max-w-[1200px] mx-auto px-4 py-8">
             <Outlet />
           </div>
         </main>

@@ -30,10 +30,12 @@ const retryRequest = async (error, maxRetries = 5) => {
     const retryAfter = error.response.headers['retry-after']
     if (retryAfter) {
       // If Retry-After is in seconds, parse it
-      delay = parseInt(retryAfter, 10) * 1000
+      const seconds = parseInt(retryAfter, 10)
+      // Cap the delay to 10 seconds max to avoid hanging the UI
+      delay = Math.min(seconds * 1000, 10000)
     } else {
       // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms...
-      delay = Math.pow(2, originalRequest._retry) * 100
+      delay = Math.min(Math.pow(2, originalRequest._retry) * 100, 10000)
     }
     
     console.warn(`Rate limited. Retrying in ${delay}ms (attempt ${originalRequest._retry}/${maxRetries})`)
@@ -89,12 +91,14 @@ api.interceptors.response.use(
       originalRequest._retry = true
 
       try {
-        const refreshToken = localStorage.getItem('auth-storage')
-        const { token } = JSON.parse(refreshToken || '{}')?.state || {}
+        // Get refresh token from persisted store
+        const storedData = localStorage.getItem('auth-storage')
+        const { state } = JSON.parse(storedData || '{}')
+        const refreshToken = state?.refreshToken
 
-        if (token) {
+        if (refreshToken) {
           const response = await axios.post('/api/v1/auth/refresh/', {
-            refresh: token,
+            refresh: refreshToken,
           })
 
           const { access } = response.data
@@ -103,6 +107,7 @@ api.interceptors.response.use(
           return api(originalRequest)
         }
       } catch (refreshError) {
+        // Refresh failed - clear auth state and redirect to login
         useAuthStore.getState().logout()
         window.location.href = '/login'
       }

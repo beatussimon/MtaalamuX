@@ -28,6 +28,7 @@ function HomePage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true)
       try {
         // Try to fetch dynamic homepage data for authenticated users
         if (isAuthenticated) {
@@ -35,56 +36,58 @@ function HomePage() {
             const response = await homepageService.getData()
             setHomepageData(response.data)
             // Use homepage data if available
-            if (response.data.categories) setCategories(response.data.categories)
-            if (response.data.articles) setArticles(response.data.articles)
-            if (response.data.top_professionals) setTopProfessionals(response.data.top_professionals)
-            if (response.data.research) setResearch(response.data.research)
-            if (response.data.statistics) setStats(response.data.statistics)
+            if (response.data.categories) setCategories(response.data.categories || [])
+            if (response.data.articles) setArticles(response.data.articles || [])
+            if (response.data.top_professionals) setTopProfessionals(response.data.top_professionals || [])
+            if (response.data.research) setResearch(response.data.research || [])
+            if (response.data.statistics) setStats(response.data.statistics || {
+              total_experts: 0,
+              total_articles: 0,
+              total_research: 0,
+              total_consultations: 0,
+            })
             setLoading(false)
             return
           } catch (homepageError) {
-            console.log('Homepage endpoint not available, using legacy data')
+            // Continue with legacy data fetching
           }
         }
 
-        // Legacy data fetching with staggered delays to avoid rate limiting
+        // Legacy data fetching with fallback values
         const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
         
         try {
-          // Fetch categories first
           const catsRes = await categoryService.getWithProfessionals()
-          setCategories(catsRes.data.results || catsRes.data)
-          await delay(100) // Small delay between requests
+          setCategories((catsRes.data.results || catsRes.data || []))
         } catch (e) {
           console.warn('Failed to fetch categories:', e)
+          setCategories([])
         }
         
         try {
-          // Then articles
           const artsRes = await articleService.getAll({ limit: 6 })
-          setArticles(artsRes.data.results || artsRes.data)
-          await delay(100)
+          setArticles((artsRes.data.results || artsRes.data || []))
         } catch (e) {
           console.warn('Failed to fetch articles:', e)
+          setArticles([])
         }
         
         try {
-          // Then professionals
           const profsRes = await professionalService.getAll({ limit: 4 })
-          setTopProfessionals(profsRes.data.results || profsRes.data)
-          await delay(100)
+          setTopProfessionals((profsRes.data.results || profsRes.data || []))
         } catch (e) {
           console.warn('Failed to fetch professionals:', e)
+          setTopProfessionals([])
         }
 
         // Fetch research and stats for authenticated users only
         if (isAuthenticated) {
           try {
             const researchRes = await researchService.getTop()
-            setResearch(researchRes.data.results || researchRes.data)
-            await delay(100)
+            setResearch((researchRes.data.results || researchRes.data || []))
           } catch (e) {
             console.warn('Failed to fetch research:', e)
+            setResearch([])
           }
           
           try {
@@ -97,7 +100,7 @@ function HomePage() {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch data:', error)
+        console.error('Failed to fetch homepage data:', error)
       } finally {
         setLoading(false)
       }
@@ -398,10 +401,10 @@ function HomePage() {
                   <div className="flex items-center justify-center space-x-1">
                     <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {professional.average_rating?.toFixed(1) || '0.0'}
+                      {professional.avg_rating?.toFixed(1) || '0.0'}
                     </span>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
-                      ({professional.follower_count || 0} followers)
+                      ({professional.followers_count || 0} followers)
                     </span>
                   </div>
                 </div>

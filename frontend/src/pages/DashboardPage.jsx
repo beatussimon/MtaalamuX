@@ -110,7 +110,7 @@ function DashboardPage() {
         // Set user stats from profile
         setStats(prev => ({
           ...prev,
-          followers: user?.follower_count || user?.profile?.follower_count || 0,
+          followers: user?.profile?.followers_count || user?.profile?.follower_count || 0,
           notifications: unreadNotifications,
           // These would come from analytics endpoint in production
           views: user?.profile?.view_count || 0,
