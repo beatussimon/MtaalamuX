@@ -35,7 +35,7 @@ export const useAuthStore = create(
           
           // Fetch tier info
           try {
-            const tierResponse = await api.get('/api/v1/users/me/tier_info/')
+            const tierResponse = await api.get('/api/v1/users/tier_info/')
             set({ tierInfo: tierResponse.data })
           } catch (tierError) {
             console.error('Failed to fetch tier info:', tierError)
@@ -78,7 +78,7 @@ export const useAuthStore = create(
           
           // Fetch tier info
           try {
-            const tierResponse = await api.get('/api/v1/users/me/tier_info/')
+            const tierResponse = await api.get('/api/v1/users/tier_info/')
             set({ tierInfo: tierResponse.data })
           } catch (tierError) {
             console.error('Failed to fetch tier info:', tierError)

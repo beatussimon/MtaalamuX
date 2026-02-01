@@ -6,7 +6,7 @@ from .views import (
     PortfolioItemViewSet, MessageViewSet, ArticleViewSet, CommentViewSet,
     ServiceReviewViewSet, FavoriteViewSet, NotificationViewSet, JobViewSet,
     ExternalJobViewSet, UpgradeRequestViewSet, FAQViewSet, FeedbackViewSet,
-    HealthCheckView
+    HealthCheckView, HomepageView
 )
 
 router = DefaultRouter()
@@ -30,4 +30,5 @@ router.register(r'feedback', FeedbackViewSet, basename='feedback')
 urlpatterns = [
     path('', include(router.urls)),
     path('health/', HealthCheckView.as_view(), name='health-check'),
+    path('homepage/', HomepageView.as_view(), name='homepage'),
 ]

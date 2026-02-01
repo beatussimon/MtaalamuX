@@ -70,7 +70,7 @@ export const authService = {
 export const userService = {
   getCurrentUser: () => api.get('/api/v1/users/me/'),
   updateProfile: (data) => api.put('/api/v1/users/update_profile/', data),
-  getTierInfo: () => api.get('/api/v1/users/me/tier_info/'),
+  getTierInfo: () => api.get('/api/v1/users/tier_info/'),
 }
 
 // Category Service
