@@ -6,7 +6,44 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000, // 30 second timeout
 })
+
+// Retry logic for 429 errors with exponential backoff
+const retryRequest = async (error, maxRetries = 5) => {
+  const originalRequest = error.config
+  
+  if (!originalRequest || !originalRequest._retry) {
+    originalRequest._retry = 0
+  }
+  
+  if (originalRequest._retry >= maxRetries) {
+    return Promise.reject(error)
+  }
+  
+  // Only retry on 429 (rate limit) errors
+  if (error.response?.status === 429) {
+    originalRequest._retry++
+    
+    // Check for Retry-After header first
+    let delay
+    const retryAfter = error.response.headers['retry-after']
+    if (retryAfter) {
+      // If Retry-After is in seconds, parse it
+      delay = parseInt(retryAfter, 10) * 1000
+    } else {
+      // Exponential backoff: 100ms, 200ms, 400ms, 800ms, 1600ms...
+      delay = Math.pow(2, originalRequest._retry) * 100
+    }
+    
+    console.warn(`Rate limited. Retrying in ${delay}ms (attempt ${originalRequest._retry}/${maxRetries})`)
+    await new Promise(resolve => setTimeout(resolve, delay))
+    
+    return api(originalRequest)
+  }
+  
+  return Promise.reject(error)
+}
 
 // Request interceptor
 api.interceptors.request.use(
@@ -15,6 +52,17 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    
+    // Set higher default limit for list endpoints
+    if (config.method === 'get' && !config.params?.limit) {
+      if (config.url?.includes('/articles') || 
+          config.url?.includes('/research') || 
+          config.url?.includes('/professionals') ||
+          config.url?.includes('/jobs')) {
+        config.params = { ...config.params, limit: 100 }
+      }
+    }
+    
     return config
   },
   (error) => {
@@ -22,10 +70,19 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor
+// Response interceptor with retry logic
 api.interceptors.response.use(
   response => response,
   async (error) => {
+    // Try retry for 429 errors
+    if (error.response?.status === 429) {
+      try {
+        return await retryRequest(error)
+      } catch (retryError) {
+        return Promise.reject(retryError)
+      }
+    }
+    
     const originalRequest = error.config
 
     if (error.response?.status === 401 && !originalRequest._retry) {

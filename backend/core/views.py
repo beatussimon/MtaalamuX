@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import Coalesce
+from django.db.models import FloatField, ExpressionWrapper
 from django.utils import timezone
 from .models import (
     UserProfile, Category, Professional, PortfolioItem, Message,
@@ -199,9 +200,14 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_featured=True)
         
         # Annotate with counts
+        # Use ExpressionWrapper to handle mixed types (Avg returns float, default 0 is int)
         queryset = queryset.annotate(
             follower_count=Count('followers', distinct=True),
-            avg_rating=Coalesce(Avg('reviews__rating'), 0)
+            average_rating=ExpressionWrapper(
+                Coalesce(Avg('reviews__rating'), 0.0),
+                output_field=FloatField()
+            ),
+            article_count=Count('articles', distinct=True)
         )
         
         return queryset

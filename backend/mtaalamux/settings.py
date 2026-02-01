@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django_filters',
     # Local apps
     'core',
-    'silk',
+    # 'silk',  # Disabled for now - may cause 500 errors
 ]
 
 MIDDLEWARE = [
@@ -49,7 +49,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'silk.middleware.SilkyMiddleware',
+    # 'silk.middleware.SilkyMiddleware',  # Disabled for now - may cause 500 errors
 ]
 
 ROOT_URLCONF = 'mtaalamux.urls'
@@ -131,16 +131,17 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
-    'DEFAULT_THROTTLE_CLASSES': (
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-        'core.throttling.CustomUserRateThrottle',
-    ),
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
-        'custom_user': '500/hour',
-    },
+    # Rate limiting DISABLED for development
+    # 'DEFAULT_THROTTLE_CLASSES': (
+    #     'rest_framework.throttling.AnonRateThrottle',
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'core.throttling.CustomUserRateThrottle',
+    # ),
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'anon': '1000000/hour',
+    #     'user': '5000000/hour',
+    #     'custom_user': '5000000/hour',
+    # },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
     'DEFAULT_FILTER_BACKENDS': (

@@ -18,8 +18,8 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-# Add silk profiling in debug mode
-if settings.DEBUG:
-    urlpatterns += [
-        path('silk/', include('silk.urls', namespace='silk')),
-    ]
+# Silk profiling has been disabled
+# if settings.DEBUG:
+#     urlpatterns += [
+#         path('silk/', include('silk.urls', namespace='silk')),
+#     ]

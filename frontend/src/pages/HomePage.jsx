@@ -14,6 +14,12 @@ function HomePage() {
   const [topProfessionals, setTopProfessionals] = useState([])
   const [homepageData, setHomepageData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    total_experts: 0,
+    total_articles: 0,
+    total_research: 0,
+    total_consultations: 0,
+  })
 
   const isBasic = tierHelpers.isBasic(tierInfo)
   const isProfessional = tierHelpers.isProfessional(tierInfo)
@@ -33,6 +39,7 @@ function HomePage() {
             if (response.data.articles) setArticles(response.data.articles)
             if (response.data.top_professionals) setTopProfessionals(response.data.top_professionals)
             if (response.data.research) setResearch(response.data.research)
+            if (response.data.statistics) setStats(response.data.statistics)
             setLoading(false)
             return
           } catch (homepageError) {
@@ -40,25 +47,54 @@ function HomePage() {
           }
         }
 
-        // Legacy data fetching
-        const promises = [
-          categoryService.getWithProfessionals(),
-          articleService.getAll({ limit: 6 }),
-          professionalService.getAll({ limit: 4 }),
-        ]
-
-        // Fetch research for authenticated users
-        if (isAuthenticated) {
-          promises.push(researchService.getTop())
+        // Legacy data fetching with staggered delays to avoid rate limiting
+        const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+        
+        try {
+          // Fetch categories first
+          const catsRes = await categoryService.getWithProfessionals()
+          setCategories(catsRes.data.results || catsRes.data)
+          await delay(100) // Small delay between requests
+        } catch (e) {
+          console.warn('Failed to fetch categories:', e)
+        }
+        
+        try {
+          // Then articles
+          const artsRes = await articleService.getAll({ limit: 6 })
+          setArticles(artsRes.data.results || artsRes.data)
+          await delay(100)
+        } catch (e) {
+          console.warn('Failed to fetch articles:', e)
+        }
+        
+        try {
+          // Then professionals
+          const profsRes = await professionalService.getAll({ limit: 4 })
+          setTopProfessionals(profsRes.data.results || profsRes.data)
+          await delay(100)
+        } catch (e) {
+          console.warn('Failed to fetch professionals:', e)
         }
 
-        const results = await Promise.all(promises)
-        setCategories(results[0].data.results || results[0].data)
-        setArticles(results[1].data.results || results[1].data)
-        setTopProfessionals(results[2].data.results || results[2].data)
-
-        if (results[3]) {
-          setResearch(results[3].data.results || results[3].data)
+        // Fetch research and stats for authenticated users only
+        if (isAuthenticated) {
+          try {
+            const researchRes = await researchService.getTop()
+            setResearch(researchRes.data.results || researchRes.data)
+            await delay(100)
+          } catch (e) {
+            console.warn('Failed to fetch research:', e)
+          }
+          
+          try {
+            const statsRes = await homepageService.getData()
+            if (statsRes.data.statistics) {
+              setStats(statsRes.data.statistics)
+            }
+          } catch (e) {
+            console.warn('Failed to fetch stats:', e)
+          }
         }
       } catch (error) {
         console.error('Failed to fetch data:', error)
@@ -231,12 +267,12 @@ function HomePage() {
         </section>
       )}
 
-      {/* Stats Section */}
+      {/* Stats Section - Dynamic */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-6">
         {[
-          { icon: Users, label: 'Verified Experts', value: '2.5K+' },
-          { icon: BookOpen, label: 'Articles & Research', value: '10K+' },
-          { icon: MessageSquare, label: 'Consultations', value: '50K+' },
+          { icon: Users, label: 'Verified Experts', value: stats.total_experts > 0 ? `${(stats.total_experts / 1000).toFixed(1)}K+` : '100+' },
+          { icon: BookOpen, label: 'Articles & Research', value: (stats.total_articles + stats.total_research) > 0 ? `${((stats.total_articles + stats.total_research) / 1000).toFixed(1)}K+` : '500+' },
+          { icon: MessageSquare, label: 'Consultations', value: stats.total_consultations > 0 ? `${(stats.total_consultations / 1000).toFixed(1)}K+` : '1K+' },
           { icon: Star, label: 'Satisfaction', value: '98%' },
         ].map((stat, index) => (
           <motion.div

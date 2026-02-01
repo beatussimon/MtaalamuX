@@ -9,11 +9,13 @@ import ProfessionalsPage from './pages/ProfessionalsPage'
 import ProfessionalDetailPage from './pages/ProfessionalDetailPage'
 import ArticlesPage from './pages/ArticlesPage'
 import ArticleDetailPage from './pages/ArticleDetailPage'
+import ResearchPage from './pages/ResearchPage'
 import JobsPage from './pages/JobsPage'
 import DashboardPage from './pages/DashboardPage'
 import ProfilePage from './pages/ProfilePage'
 import MessagesPage from './pages/MessagesPage'
 import NotificationsPage from './pages/NotificationsPage'
+import UpgradePage from './pages/UpgradePage'
 import FAQPage from './pages/FAQPage'
 import FeedbackPage from './pages/FeedbackPage'
 
@@ -62,9 +64,12 @@ function App() {
         <Route path="professionals/:id" element={<ProfessionalDetailPage />} />
         <Route path="articles" element={<ArticlesPage />} />
         <Route path="articles/:id" element={<ArticleDetailPage />} />
+        <Route path="research" element={<ResearchPage />} />
+        <Route path="research/:id" element={<div className="p-8 text-center">Research detail page coming soon</div>} />
         <Route path="jobs" element={<JobsPage />} />
         <Route path="faq" element={<FAQPage />} />
         <Route path="feedback" element={<FeedbackPage />} />
+        <Route path="upgrade" element={<UpgradePage />} />
         
         {/* Auth Routes */}
         <Route

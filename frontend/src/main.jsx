@@ -5,9 +5,15 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 
+// Enable React Router v7 future flags to remove warnings
+const routerFuture = {
+  v7_startTransition: true,
+  v7_relativeSplatPath: true,
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={routerFuture}>
       <App />
       <Toaster
         position="top-right"

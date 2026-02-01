@@ -5,8 +5,9 @@ from rest_framework.throttling import UserRateThrottle
 class CustomUserRateThrottle(UserRateThrottle):
     """
     Custom throttle for authenticated users with higher limits.
+    Uses rate from settings.py (DEFAULT_THROTTLE_RATES['custom_user'])
     """
-    rate = '500/hour'
+    pass  # Rate is set in settings.py
 
 
 class BurstRateThrottle(UserRateThrottle):

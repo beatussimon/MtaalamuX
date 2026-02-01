@@ -216,7 +216,7 @@ class Professional(models.Model):
 
     @property
     def research_count(self):
-        return self.research_posts.filter(is_published=True).count()
+        return self.research_posts.filter(status='published').count()
 
     @property
     def has_green_checkmark(self):
