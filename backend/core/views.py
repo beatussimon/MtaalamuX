@@ -658,6 +658,7 @@ class ArticleViewSet(viewsets.ModelViewSet):
 class ResearchViewSet(viewsets.ModelViewSet):
     """ViewSet for Research model"""
     queryset = Research.objects.all()
+    pagination_class = None  # Disable pagination to return 200 with empty list instead of 404
     # Throttling disabled - not configured in settings
     # throttle_classes = [ArticleCreateThrottle]
     
@@ -817,8 +818,6 @@ class ResearchViewSet(viewsets.ModelViewSet):
         except Exception as e:
             import logging
             logger = logging.getLogger(__name__)
-            logger.error(f"Error creating research comment: {str(e)}", exc_info=True)
-            return Response({'error': 'Failed to create comment', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'])
     def top(self, request):
