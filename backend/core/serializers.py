@@ -130,6 +130,7 @@ class ProfessionalSerializer(serializers.ModelSerializer):
             'average_rating', 'article_count', 'research_count',
             'has_green_checkmark', 'has_gold_checkmark', 'has_verification',
             'display_verification', 'is_featured', 'featured_at',
+            'allow_instant_messaging',
             'linkedin_url', 'twitter_url', 'github_url', 'website_url',
             'cv', 'certificates', 'created_at', 'updated_at'
         ]

@@ -178,6 +178,9 @@ class Professional(models.Model):
     # Featured status
     is_featured = models.BooleanField(default=False)
     featured_at = models.DateTimeField(null=True, blank=True)
+
+    # Messaging preferences
+    allow_instant_messaging = models.BooleanField(default=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

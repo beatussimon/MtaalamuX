@@ -376,6 +376,10 @@ class MessageViewSet(viewsets.ModelViewSet):
         conversation_id = self.kwargs.get('conversation_pk')
         if conversation_id:
             conversation = get_object_or_404(Conversation, id=conversation_id)
+            # Check if user can message in this conversation
+            if not self._can_message_in_conversation(conversation):
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You do not have permission to send messages in this conversation.")
             serializer.save(conversation=conversation, sender=self.request.user)
         else:
             # For direct messages, create or get conversation
@@ -383,6 +387,10 @@ class MessageViewSet(viewsets.ModelViewSet):
             if recipient_id:
                 from django.contrib.auth.models import User
                 recipient = get_object_or_404(User, id=recipient_id)
+                # Check if user can initiate messaging with this recipient
+                if not self._can_initiate_messaging_with(recipient):
+                    from rest_framework.exceptions import PermissionDenied
+                    raise PermissionDenied("You do not have permission to message this user.")
                 # Find or create conversation between these users
                 conversation = Conversation.objects.filter(
                     participants=self.request.user
@@ -398,6 +406,42 @@ class MessageViewSet(viewsets.ModelViewSet):
                 serializer.save(conversation=conversation, sender=self.request.user)
             else:
                 serializer.save(sender=self.request.user)
+
+    def _can_initiate_messaging_with(self, recipient):
+        """Check if user can initiate messaging with recipient (expert)"""
+        # Must be Plus or Premium
+        user_profile = self.request.user.userprofile
+        if user_profile.is_basic:
+            return False
+
+        # Check if recipient is a professional
+        try:
+            professional = recipient.professional
+        except:
+            return False  # Not a professional
+
+        if user_profile.is_premium:
+            # Premium users can message if expert allows instant messaging or has consultation
+            has_consultation = Consultation.objects.filter(
+                client=self.request.user,
+                expert=professional,
+                status__in=['accepted', 'in_progress', 'completed']
+            ).exists()
+            return professional.allow_instant_messaging or has_consultation
+        elif user_profile.is_plus:
+            # Plus users can only message if they have an accepted consultation
+            return Consultation.objects.filter(
+                client=self.request.user,
+                expert=professional,
+                status__in=['accepted', 'in_progress', 'completed']
+            ).exists()
+        return False
+
+    def _can_message_in_conversation(self, conversation):
+        """Check if user can send messages in existing conversation"""
+        # For now, allow if user is participant
+        # Could add more checks later
+        return conversation.participants.filter(id=self.request.user.id).exists()
     
     @action(detail=False, methods=['get'])
     def inbox(self, request):
