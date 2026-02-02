@@ -451,8 +451,8 @@ class Research(models.Model):
 
 class Comment(models.Model):
     """Comments on articles and research"""
-    article = models.ForeignKey(Article, on_delete=models.CASCADE, null=True, blank=True)
-    research = models.ForeignKey(Research, on_delete=models.CASCADE, null=True, blank=True)
+    article = models.ForeignKey(Article, on_delete=models.CASCADE, null=True, blank=True, related_name='comments')
+    research = models.ForeignKey(Research, on_delete=models.CASCADE, null=True, blank=True, related_name='comments')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)

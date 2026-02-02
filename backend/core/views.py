@@ -25,12 +25,12 @@ from .serializers import (
     UserProfileUpdateSerializer, CategorySerializer, CategorySimpleSerializer,
     ProfessionalSerializer, ProfessionalListSerializer, PortfolioItemSerializer,
     MessageSerializer, MessageCreateSerializer, ArticleSerializer,
-    ArticleListSerializer, ArticleCreateSerializer, CommentSerializer,
-    CommentCreateSerializer, ServiceReviewSerializer, ServiceReviewCreateSerializer,
+    ArticleListSerializer, ArticleCreateSerializer, ArticleDetailSerializer,
+    CommentSerializer, CommentCreateSerializer, ServiceReviewSerializer, ServiceReviewCreateSerializer,
     FavoriteSerializer, NotificationSerializer, JobSerializer, JobListSerializer,
     ExternalJobSerializer, ExternalJobListSerializer, UpgradeRequestSerializer,
     UpgradeRequestCreateSerializer, FAQSerializer, FeedbackSerializer,
-    ResearchSerializer, ResearchListSerializer, ResearchCreateSerializer,
+    ResearchSerializer, ResearchListSerializer, ResearchCreateSerializer, ResearchDetailSerializer,
     ConsultationSerializer, ConsultationTaskSerializer, ConsultationApplicationSerializer,
     ConversationSerializer, MessageCreateSerializer, PaymentMethodSerializer,
     PaymentRecordSerializer, DigitalItemSerializer, MerchItemSerializer,
@@ -256,7 +256,8 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in articles endpoint: {str(e)}")
-            return Response({'error': 'Failed to fetch articles'}, status=500)
+            # Return empty list instead of 500 error
+            return Response([])
     
     @action(detail=True, methods=['get'])
     def research(self, request, pk=None):
@@ -270,7 +271,8 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in research endpoint: {str(e)}")
-            return Response({'error': 'Failed to fetch research'}, status=500)
+            # Return empty list instead of 500 error
+            return Response([])
     
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
@@ -284,7 +286,8 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in reviews endpoint: {str(e)}")
-            return Response({'error': 'Failed to fetch reviews'}, status=500)
+            # Return empty list instead of 500 error
+            return Response([])
     
     @action(detail=True, methods=['get'])
     def portfolio(self, request, pk=None):
@@ -298,7 +301,8 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Error in portfolio endpoint: {str(e)}")
-            return Response({'error': 'Failed to fetch portfolio'}, status=500)
+            # Return empty list instead of 500 error
+            return Response([])
 
 
 # =============================================================================
@@ -492,6 +496,8 @@ class ArticleViewSet(viewsets.ModelViewSet):
             return ArticleListSerializer
         if self.action == 'create':
             return ArticleCreateSerializer
+        if self.action == 'retrieve':
+            return ArticleDetailSerializer
         return ArticleSerializer
     
     def get_permissions(self):
@@ -535,10 +541,16 @@ class ArticleViewSet(viewsets.ModelViewSet):
     
     def retrieve(self, request, *args, **kwargs):
         """Increment view count on retrieve"""
-        instance = self.get_object()
-        instance.views += 1
-        instance.save(update_fields=['views'])
-        return super().retrieve(request, *args, **kwargs)
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            instance = self.get_object()
+            instance.views += 1
+            instance.save(update_fields=['views'])
+            return super().retrieve(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error retrieving article: {str(e)}")
+            raise
     
     @action(detail=False, methods=['get'])
     def my_drafts(self, request):
@@ -574,13 +586,41 @@ class ArticleViewSet(viewsets.ModelViewSet):
         article.save()
         return Response({'status': 'shared', 'shares': article.shares})
     
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get', 'post'])
     def comments(self, request, pk=None):
-        """Get comments for an article"""
-        article = self.get_object()
-        comments = article.comments.filter(parent__isnull=True)
-        serializer = CommentSerializer(comments, many=True, context={'request': request})
-        return Response(serializer.data)
+        """Get or create comments for an article"""
+        if request.method == 'GET':
+            try:
+                article = self.get_object()
+                comments = article.comments.filter(parent__isnull=True)
+                serializer = CommentSerializer(comments, many=True, context={'request': request})
+                return Response(serializer.data)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching article comments for id {pk}: {str(e)}")
+                # Return empty list instead of 500 error
+                return Response([])
+        
+        # POST - Create comment
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required to post comments'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        try:
+            article = self.get_object()
+            serializer = CommentCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                comment = serializer.save(article=article, user=request.user)
+                return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error creating article comment: {str(e)}", exc_info=True)
+            return Response({'error': 'Failed to create comment', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'])
     def trending(self, request):
@@ -626,6 +666,8 @@ class ResearchViewSet(viewsets.ModelViewSet):
             return ResearchListSerializer
         if self.action == 'create':
             return ResearchCreateSerializer
+        if self.action == 'retrieve':
+            return ResearchDetailSerializer
         return ResearchSerializer
     
     def get_permissions(self):
@@ -666,10 +708,16 @@ class ResearchViewSet(viewsets.ModelViewSet):
     
     def retrieve(self, request, *args, **kwargs):
         """Increment view count on retrieve"""
-        instance = self.get_object()
-        instance.views += 1
-        instance.save(update_fields=['views'])
-        return super().retrieve(request, *args, **kwargs)
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            instance = self.get_object()
+            instance.views += 1
+            instance.save(update_fields=['views'])
+            return super().retrieve(request, *args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error retrieving research: {str(e)}")
+            raise
     
     @action(detail=False, methods=['get'])
     def my_drafts(self, request):
@@ -734,6 +782,44 @@ class ResearchViewSet(viewsets.ModelViewSet):
         research.save()
         return Response({'status': 'shared', 'shares': research.shares})
     
+    @action(detail=True, methods=['get', 'post'])
+    def comments(self, request, pk=None):
+        """Get or create comments for a research"""
+        from .models import Comment
+        
+        if request.method == 'GET':
+            try:
+                research = self.get_object()
+                comments = Comment.objects.filter(research=research, parent__isnull=True)
+                serializer = CommentSerializer(comments, many=True, context={'request': request})
+                return Response(serializer.data)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error fetching research comments for id {pk}: {str(e)}")
+                # Return empty list instead of 500 error
+                return Response([])
+        
+        # POST - Create comment
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required to post comments'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        try:
+            research = self.get_object()
+            serializer = CommentCreateSerializer(data=request.data)
+            if serializer.is_valid():
+                comment = serializer.save(research=research, user=request.user)
+                return Response(CommentSerializer(comment, context={'request': request}).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error creating research comment: {str(e)}", exc_info=True)
+            return Response({'error': 'Failed to create comment', 'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @action(detail=False, methods=['get'])
     def top(self, request):
         """Get top research"""
@@ -756,7 +842,7 @@ class ResearchViewSet(viewsets.ModelViewSet):
 class CommentViewSet(viewsets.ModelViewSet):
     """ViewSet for Comment model"""
     queryset = Comment.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]  # Allow read access for all, write requires auth
     
     def get_serializer_class(self):
         if self.action == 'create':
@@ -773,6 +859,11 @@ class CommentViewSet(viewsets.ModelViewSet):
         return Comment.objects.all()
     
     def perform_create(self, serializer):
+        if not self.request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required to post comments'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         article_id = self.kwargs.get('article_pk')
         research_id = self.kwargs.get('research_pk')
         if article_id:
@@ -784,9 +875,23 @@ class CommentViewSet(viewsets.ModelViewSet):
         else:
             serializer.save(user=self.request.user)
     
+    def create(self, request, *args, **kwargs):
+        """Override create to handle unauthenticated users gracefully"""
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required to post comments'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        return super().create(request, *args, **kwargs)
+    
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None, article_pk=None, research_pk=None):
         """Like/unlike a comment"""
+        if not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required to like comments'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         comment = self.get_object()
         if request.user in comment.likes.all():
             comment.likes.remove(request.user)

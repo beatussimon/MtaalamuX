@@ -280,6 +280,76 @@ class MessageCreateSerializer(serializers.ModelSerializer):
 # ARTICLE SERIALIZERS
 # =============================================================================
 
+class ArticleDetailSerializer(serializers.ModelSerializer):
+    """Serializer for Article detail view with tier-based content gating"""
+    author = ProfessionalSerializer(read_only=True)
+    category = CategorySimpleSerializer(read_only=True)
+    like_count = serializers.IntegerField(read_only=True)
+    is_liked = serializers.SerializerMethodField()
+    comments_count = serializers.SerializerMethodField()
+    engagement_score = serializers.IntegerField(read_only=True)
+    
+    # Tier-aware content fields
+    content_preview = serializers.SerializerMethodField()
+    content_full = serializers.SerializerMethodField()
+    access_level = serializers.SerializerMethodField()
+    is_blurred = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Article
+        fields = [
+            'id', 'author', 'title', 'content', 'image', 'category',
+            'publish_date', 'is_published', 'is_featured', 'views', 'likes', 'shares',
+            'like_count', 'is_liked', 'comments_count', 'engagement_score',
+            # Tier-aware fields
+            'content_preview', 'content_full', 'access_level', 'is_blurred',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'author', 'publish_date', 'views', 'likes', 'shares', 'updated_at']
+    
+    def get_is_liked(self, obj):
+        user = self.context.get('request').user
+        if user and user.is_authenticated:
+            return obj.likes.filter(id=user.id).exists()
+        return False
+    
+    def get_comments_count(self, obj):
+        return obj.comments.count()
+    
+    def _get_user_tier(self):
+        """Get user's tier from request"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            profile = getattr(request.user, 'profile', None)
+            if profile:
+                return profile.tier
+        return 'basic'
+    
+    def get_access_level(self, obj):
+        """Return the user's access level"""
+        return self._get_user_tier()
+    
+    def get_is_blurred(self, obj):
+        """Return True if content should be blurred for basic users"""
+        tier = self._get_user_tier()
+        return tier == 'basic'
+    
+    def get_content_preview(self, obj):
+        """Return first 300 characters of content as preview"""
+        content = obj.content or ''
+        # Strip HTML tags for preview
+        import re
+        plain_text = re.sub(r'<[^>]+>', '', content)
+        return plain_text[:300] + ('...' if len(plain_text) > 300 else '')
+    
+    def get_content_full(self, obj):
+        """Return full content only for Plus/Premium users"""
+        tier = self._get_user_tier()
+        if tier in ['plus', 'premium']:
+            return obj.content
+        return None
+
+
 class ArticleSerializer(serializers.ModelSerializer):
     """Serializer for Article model"""
     author = ProfessionalSerializer(read_only=True)
@@ -342,6 +412,74 @@ class ArticleCreateSerializer(serializers.ModelSerializer):
 # =============================================================================
 # RESEARCH SERIALIZERS
 # =============================================================================
+
+class ResearchDetailSerializer(serializers.ModelSerializer):
+    """Serializer for Research detail view with tier-based content gating"""
+    author = ProfessionalSerializer(read_only=True)
+    category = CategorySimpleSerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all(), source='category', write_only=True, allow_null=True)
+    like_count = serializers.IntegerField(read_only=True)
+    is_liked = serializers.SerializerMethodField()
+    engagement_score = serializers.IntegerField(read_only=True)
+    
+    # Tier-aware content fields
+    content_preview = serializers.SerializerMethodField()
+    content_full = serializers.SerializerMethodField()
+    access_level = serializers.SerializerMethodField()
+    is_blurred = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Research
+        fields = [
+            'id', 'author', 'title', 'abstract', 'content', 'document', 'image',
+            'category', 'category_id', 'tags', 'publish_date', 'status',
+            'is_featured', 'views', 'likes', 'shares', 'like_count',
+            'is_liked', 'engagement_score',
+            # Tier-aware fields
+            'content_preview', 'content_full', 'access_level', 'is_blurred',
+            'updated_at'
+        ]
+        read_only_fields = ['id', 'author', 'publish_date', 'views', 'likes', 'shares', 'updated_at']
+    
+    def get_is_liked(self, obj):
+        user = self.context.get('request').user
+        if user and user.is_authenticated:
+            return obj.likes.filter(id=user.id).exists()
+        return False
+    
+    def _get_user_tier(self):
+        """Get user's tier from request"""
+        request = self.context.get('request')
+        if request and request.user.is_authenticated:
+            profile = getattr(request.user, 'profile', None)
+            if profile:
+                return profile.tier
+        return 'basic'
+    
+    def get_access_level(self, obj):
+        """Return the user's access level"""
+        return self._get_user_tier()
+    
+    def get_is_blurred(self, obj):
+        """Return True if content should be blurred for basic users"""
+        tier = self._get_user_tier()
+        return tier == 'basic'
+    
+    def get_content_preview(self, obj):
+        """Return first 300 characters of content as preview"""
+        content = obj.content or ''
+        # Strip HTML tags for preview
+        import re
+        plain_text = re.sub(r'<[^>]+>', '', content)
+        return plain_text[:300] + ('...' if len(plain_text) > 300 else '')
+    
+    def get_content_full(self, obj):
+        """Return full content only for Plus/Premium users"""
+        tier = self._get_user_tier()
+        if tier in ['plus', 'premium']:
+            return obj.content
+        return None
+
 
 class ResearchSerializer(serializers.ModelSerializer):
     """Serializer for Research model"""
