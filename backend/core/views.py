@@ -164,7 +164,6 @@ class CategoryViewSet(viewsets.ModelViewSet):
 class ProfessionalViewSet(viewsets.ModelViewSet):
     """ViewSet for Professional model"""
     queryset = Professional.objects.all()
-    permission_classes = [IsAuthenticated]
     
     def get_serializer_class(self):
         if self.action == 'list':
@@ -218,11 +217,11 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             return Professional.objects.none()
     
     def get_permissions(self):
-        if self.action == 'list':
+        # Allow anyone to list and retrieve professionals (public read access)
+        if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        if self.action == 'retrieve':
-            return [IsAuthenticated()]
-        return [IsPremiumUser()]
+        # Write operations require authentication
+        return [IsAuthenticated()]
     
     def perform_create(self, serializer):
         # Get or create professional for user
@@ -248,34 +247,58 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def articles(self, request, pk=None):
         """Get articles by this professional"""
-        professional = self.get_object()
-        articles = professional.articles.filter(is_published=True)
-        serializer = ArticleListSerializer(articles, many=True)
-        return Response(serializer.data)
+        try:
+            professional = get_object_or_404(Professional, pk=pk)
+            articles = professional.articles.filter(is_published=True)
+            serializer = ArticleListSerializer(articles, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in articles endpoint: {str(e)}")
+            return Response({'error': 'Failed to fetch articles'}, status=500)
     
     @action(detail=True, methods=['get'])
     def research(self, request, pk=None):
         """Get research by this professional"""
-        professional = self.get_object()
-        research = professional.research_posts.filter(status='published')
-        serializer = ResearchListSerializer(research, many=True)
-        return Response(serializer.data)
+        try:
+            professional = get_object_or_404(Professional, pk=pk)
+            research = professional.research_posts.filter(status='published')
+            serializer = ResearchListSerializer(research, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in research endpoint: {str(e)}")
+            return Response({'error': 'Failed to fetch research'}, status=500)
     
     @action(detail=True, methods=['get'])
     def reviews(self, request, pk=None):
         """Get reviews for this professional"""
-        professional = self.get_object()
-        reviews = professional.reviews.all()
-        serializer = ServiceReviewSerializer(reviews, many=True)
-        return Response(serializer.data)
+        try:
+            professional = get_object_or_404(Professional, pk=pk)
+            reviews = professional.reviews.all()
+            serializer = ServiceReviewSerializer(reviews, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in reviews endpoint: {str(e)}")
+            return Response({'error': 'Failed to fetch reviews'}, status=500)
     
     @action(detail=True, methods=['get'])
     def portfolio(self, request, pk=None):
         """Get portfolio items for this professional"""
-        professional = self.get_object()
-        portfolio = professional.portfolio.all()
-        serializer = PortfolioItemSerializer(portfolio, many=True)
-        return Response(serializer.data)
+        try:
+            professional = get_object_or_404(Professional, pk=pk)
+            portfolio = professional.portfolio.all()
+            serializer = PortfolioItemSerializer(portfolio, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in portfolio endpoint: {str(e)}")
+            return Response({'error': 'Failed to fetch portfolio'}, status=500)
 
 
 # =============================================================================
