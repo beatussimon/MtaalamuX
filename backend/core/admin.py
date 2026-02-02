@@ -10,7 +10,7 @@ from .models import (
     ConsultationTask, ConsultationApplication, ConsultationMessage,
     Conversation, PaymentMethod, PaymentRecord, DigitalItem,
     MerchItem, Purchase, VerificationRequest, TopExpert,
-    FeaturedContent
+    FeaturedContent, SiteSettings
 )
 
 
@@ -249,11 +249,28 @@ class PurchaseAdmin(admin.ModelAdmin):
 @admin.register(UpgradeRequest)
 class UpgradeRequestAdmin(admin.ModelAdmin):
     """Upgrade Request Admin"""
-    list_display = ['user', 'upgrade_type', 'status', 'requested_at', 'reviewed_by', 'reviewed_at']
-    list_filter = ['status', 'upgrade_type', 'requested_at']
-    search_fields = ['user__username', 'notes']
+    list_display = ['user', 'upgrade_type', 'status', 'payment_verified', 'requested_at', 'reviewed_by', 'reviewed_at']
+    list_filter = ['status', 'upgrade_type', 'payment_verified', 'requested_at']
+    search_fields = ['user__username', 'notes', 'payment_reference', 'rejection_reason']
     raw_id_fields = ['user', 'reviewed_by']
     readonly_fields = ['requested_at', 'updated_at']
+    fieldsets = (
+        ('Request Details', {
+            'fields': ('user', 'upgrade_type', 'notes')
+        }),
+        ('Payment Information (Plus upgrades)', {
+            'fields': ('payment_method', 'payment_reference', 'payment_verified')
+        }),
+        ('Document Verification (Premium upgrades)', {
+            'fields': ('lawyer_confirmation_letter', 'supporting_documents')
+        }),
+        ('Review', {
+            'fields': ('status', 'rejection_reason', 'reviewed_by', 'reviewed_at')
+        }),
+        ('Timestamps', {
+            'fields': ('requested_at', 'updated_at')
+        }),
+    )
 
 
 @admin.register(VerificationRequest)
@@ -317,10 +334,31 @@ class JobAdmin(admin.ModelAdmin):
 @admin.register(ExternalJob)
 class ExternalJobAdmin(admin.ModelAdmin):
     """External Job Admin"""
-    list_display = ['title', 'category', 'job_type', 'location', 'is_active', 'created_at']
+    list_display = ['title', 'category', 'job_type', 'location', 'provider_name', 'is_active', 'created_at']
     list_filter = ['job_type', 'is_active', 'category', 'created_at']
-    search_fields = ['title', 'description']
+    search_fields = ['title', 'description', 'provider_name']
     raw_id_fields = ['category', 'created_by']
+    fieldsets = (
+        ('Job Details', {
+            'fields': ('title', 'description', 'category', 'location', 'budget')
+        }),
+        ('Job Type', {
+            'fields': ('job_type',)
+        }),
+        ('Provider Information', {
+            'fields': ('provider_name', 'provider_url')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_email', 'contact_phone', 'apply_url')
+        }),
+        ('Status', {
+            'fields': ('is_active',)
+        }),
+        ('Metadata', {
+            'fields': ('created_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 @admin.register(Badge)
@@ -363,10 +401,33 @@ class FAQAdmin(admin.ModelAdmin):
 @admin.register(Feedback)
 class FeedbackAdmin(admin.ModelAdmin):
     """Feedback Admin"""
-    list_display = ['user', 'category', 'rating', 'is_resolved', 'submitted_at']
-    list_filter = ['category', 'is_resolved', 'submitted_at']
-    search_fields = ['message', 'user__username']
+    list_display = ['user', 'name', 'email', 'subject', 'category', 'status', 'rating', 'is_resolved', 'submitted_at']
+    list_filter = ['category', 'status', 'is_resolved', 'submitted_at']
+    search_fields = ['message', 'name', 'email', 'subject', 'admin_response', 'user__username']
     raw_id_fields = ['user']
+    readonly_fields = ['submitted_at', 'updated_at']
+    fieldsets = (
+        ('Submitter Info', {
+            'fields': ('user', 'name', 'email')
+        }),
+        ('Message', {
+            'fields': ('subject', 'message', 'category', 'rating')
+        }),
+        ('Status', {
+            'fields': ('status', 'is_resolved', 'admin_response')
+        }),
+        ('Timestamps', {
+            'fields': ('submitted_at', 'updated_at')
+        }),
+    )
+
+
+@admin.register(SiteSettings)
+class SiteSettingsAdmin(admin.ModelAdmin):
+    """Site Settings Admin"""
+    list_display = ['key', 'description', 'value_type', 'updated_at']
+    search_fields = ['key', 'value', 'description']
+    fields = ['key', 'value', 'value_type', 'description']
 
 
 # =============================================================================

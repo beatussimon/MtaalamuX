@@ -134,8 +134,8 @@ class IsBasicUser(permissions.BasePermission):
 
 class IsProfessionalUser(permissions.BasePermission):
     """
-    Permission for Professional tier and above.
-    Professional users can initiate consultations and use messaging.
+    Permission for Plus tier and above.
+    Plus users can initiate consultations and use messaging.
     """
     
     def has_permission(self, request, view):

@@ -10,7 +10,7 @@ from .views import (
     ConsultationViewSet, ConsultationTaskViewSet, ConsultationApplicationViewSet,
     PaymentMethodViewSet, PaymentRecordViewSet, DigitalItemViewSet, MerchItemViewSet,
     PurchaseViewSet, VerificationRequestViewSet, TopExpertViewSet, FeaturedContentViewSet,
-    ActivityLogViewSet
+    ActivityLogViewSet, SiteSettingsViewSet
 )
 
 router = DefaultRouter()
@@ -44,6 +44,7 @@ router.register(r'verification-requests', VerificationRequestViewSet, basename='
 router.register(r'top-experts', TopExpertViewSet, basename='top-experts')
 router.register(r'featured-content', FeaturedContentViewSet, basename='featured-content')
 router.register(r'activity-logs', ActivityLogViewSet, basename='activity-logs')
+router.register(r'site-settings', SiteSettingsViewSet, basename='site-settings')
 
 urlpatterns = [
     path('', include(router.urls)),

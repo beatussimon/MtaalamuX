@@ -67,7 +67,7 @@ class UserProfile(models.Model):
         return self.tier == UserTier.BASIC
 
     @property
-    def is_professional(self):
+    def is_plus(self):
         return self.tier == UserTier.PLUS
 
     @property
@@ -314,9 +314,11 @@ class Message(models.Model):
     )
     content = models.TextField()
     file = models.FileField(upload_to='messages/', blank=True, null=True)
+    file_size = models.PositiveIntegerField(blank=True, null=True)  # File size in bytes
     image = models.ImageField(upload_to='messages/images/', blank=True, null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(blank=True, null=True)
     parent = models.ForeignKey(
         'self', 
         on_delete=models.CASCADE, 
@@ -332,6 +334,12 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.username}: {self.content[:50]}"
+    
+    def save(self, *args, **kwargs):
+        """Track file size on save"""
+        if self.file and not self.file_size:
+            self.file_size = self.file.size
+        super().save(*args, **kwargs)
 
 
 # =============================================================================
@@ -539,6 +547,8 @@ class Notification(models.Model):
         ('review', 'Review'),
         ('upgrade', 'Upgrade'),
         ('verification', 'Verification'),
+        ('job', 'Job'),
+        ('payment', 'Payment'),
         ('system', 'System'),
     ]
     
@@ -549,6 +559,7 @@ class Notification(models.Model):
     link = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'Notification'
@@ -557,6 +568,14 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.title}"
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        from django.utils import timezone
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save()
 
 
 # =============================================================================
@@ -1014,7 +1033,16 @@ class ExternalJob(models.Model):
         related_name='external_jobs_created'
     )
     documents = GenericRelation('JobDocument', related_query_name='external_job')
+    
+    # Application and contact info
     apply_url = models.URLField(max_length=500, blank=True, null=True)
+    contact_email = models.EmailField(max_length=254, blank=True, null=True)
+    contact_phone = models.CharField(max_length=50, blank=True, null=True)
+    
+    # Provider/source information
+    provider_name = models.CharField(max_length=100, blank=True, null=True)
+    provider_url = models.URLField(max_length=500, blank=True, null=True)
+    
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -1031,9 +1059,9 @@ class ExternalJob(models.Model):
 # =============================================================================
 
 class UpgradeRequest(models.Model):
-    """Premium upgrade requests"""
+    """Tier upgrade requests"""
     UPGRADE_TYPES = (
-        ('professional', 'Professional Tier'),
+        ('plus', 'Plus Tier'),
         ('premium', 'Premium Tier (Expert)'),
     )
     STATUS_CHOICES = (
@@ -1052,6 +1080,26 @@ class UpgradeRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True)
+    
+    # Payment information for instant upgrades (Plus)
+    payment_method = models.CharField(max_length=50, blank=True, null=True)
+    payment_reference = models.CharField(max_length=100, blank=True, null=True)
+    payment_verified = models.BooleanField(default=False)
+    
+    # Document verification for Premium upgrades
+    lawyer_confirmation_letter = models.FileField(
+        upload_to='upgrade_documents/', 
+        blank=True, 
+        null=True,
+        help_text='Letter from a licensed lawyer confirming expertise (required for Premium)'
+    )
+    supporting_documents = models.FileField(
+        upload_to='upgrade_documents/', 
+        blank=True, 
+        null=True,
+        help_text='Additional supporting documents'
+    )
+    
     reviewed_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -1060,13 +1108,25 @@ class UpgradeRequest(models.Model):
         related_name='reviewed_upgrade_requests'
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, null=True)
 
     class Meta:
         verbose_name = 'Upgrade Request'
         verbose_name_plural = 'Upgrade Requests'
+        ordering = ['-requested_at']
 
     def __str__(self):
         return f"{self.user.username} - {self.get_upgrade_type_display()} ({self.status})"
+    
+    @property
+    def requires_verification(self):
+        """Premium upgrades require document verification"""
+        return self.upgrade_type == 'premium'
+    
+    @property
+    def is_instant_upgrade(self):
+        """Plus upgrades are instant with payment verification"""
+        return self.upgrade_type == 'plus'
 
 
 # =============================================================================
@@ -1133,7 +1193,18 @@ class FAQ(models.Model):
 
 
 class Feedback(models.Model):
-    """User feedback"""
+    """User feedback / Contact form submissions"""
+    FEEDBACK_CATEGORIES = [
+        ('general', 'General Inquiry'),
+        ('support', 'Technical Support'),
+        ('billing', 'Billing & Payments'),
+        ('verification', 'Verification'),
+        ('upgrade', 'Account Upgrade'),
+        ('consultation', 'Consultation Issues'),
+        ('partnership', 'Partnership'),
+        ('other', 'Other'),
+    ]
+    
     user = models.ForeignKey(
         User, 
         on_delete=models.CASCADE, 
@@ -1141,18 +1212,25 @@ class Feedback(models.Model):
         null=True, 
         blank=True
     )
+    name = models.CharField(max_length=100, blank=True)
+    email = models.EmailField(max_length=254, blank=True)
+    subject = models.CharField(max_length=200, blank=True)
     message = models.TextField()
     rating = models.IntegerField(choices=[(i, str(i)) for i in range(1, 6)], null=True, blank=True)
-    category = models.CharField(max_length=50, default='general')
+    category = models.CharField(max_length=50, choices=FEEDBACK_CATEGORIES, default='general')
+    status = models.CharField(max_length=20, choices=[('new', 'New'), ('in_progress', 'In Progress'), ('resolved', 'Resolved')], default='new')
+    admin_response = models.TextField(blank=True)
     submitted_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     is_resolved = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Feedback'
         verbose_name_plural = 'Feedbacks'
+        ordering = ['-submitted_at']
 
     def __str__(self):
-        return f"Feedback from {self.user.username if self.user else 'Anonymous'}"
+        return f"Feedback: {self.subject or self.message[:50]} from {self.user.username if self.user else self.name or 'Anonymous'}"
 
 
 # =============================================================================
@@ -1269,5 +1347,53 @@ class FeaturedContent(models.Model):
         verbose_name = 'Featured Content'
         verbose_name_plural = 'Featured Content'
         ordering = ['order', '-featured_at']
+
+
+# =============================================================================
+# SITE SETTINGS (Admin-editable instructions)
+# =============================================================================
+
+class SiteSettings(models.Model):
+    """Site-wide settings and instructions editable via admin"""
+    key = models.CharField(max_length=100, unique=True)
+    value = models.TextField()
+    value_type = models.CharField(max_length=20, choices=[
+        ('text', 'Plain Text'),
+        ('html', 'HTML'),
+        ('markdown', 'Markdown'),
+    ], default='text')
+    description = models.CharField(max_length=200, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Site Setting'
+        verbose_name_plural = 'Site Settings'
+
+    def __str__(self):
+        return self.key
+
+    @classmethod
+    def get_value(cls, key, default=''):
+        """Get a setting value by key"""
+        try:
+            return cls.objects.get(key=key).value
+        except cls.DoesNotExist:
+            return default
+    
+    @classmethod
+    def get_message_file_size_limit(cls, default=10485760):  # Default 10MB
+        """Get the maximum file size for message attachments in bytes"""
+        try:
+            return int(cls.objects.get(key='message_file_size_limit').value)
+        except (cls.DoesNotExist, ValueError):
+            return default
+    
+    @classmethod
+    def get_max_image_size(cls, default=5242880):  # Default 5MB
+        """Get the maximum image size for message images in bytes"""
+        try:
+            return int(cls.objects.get(key='max_image_size').value)
+        except (cls.DoesNotExist, ValueError):
+            return default
 
 

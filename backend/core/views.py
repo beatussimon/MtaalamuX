@@ -18,7 +18,7 @@ from .models import (
     ConsultationTask, ConsultationApplication, ConsultationMessage,
     Conversation, PaymentMethod, PaymentRecord, DigitalItem,
     MerchItem, Purchase, VerificationRequest, TopExpert,
-    FeaturedContent, UserTier, VerificationLevel
+    FeaturedContent, UserTier, VerificationLevel, SiteSettings
 )
 from .serializers import (
     UserSerializer, UserCreateSerializer, UserProfileSerializer,
@@ -36,7 +36,7 @@ from .serializers import (
     PaymentRecordSerializer, DigitalItemSerializer, MerchItemSerializer,
     PurchaseSerializer, VerificationRequestSerializer, VerificationRequestCreateSerializer,
     TopExpertSerializer, FeaturedContentSerializer, ConsultationMessageSerializer,
-    ActivityLogSerializer
+    ActivityLogSerializer, SiteSettingsSerializer
 )
 from .permissions import (
     IsOwnerOrReadOnly, IsProfessionalOrReadOnly, CanUpgradeUser,
@@ -106,7 +106,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'tier': profile.tier,
             'display_tier': profile.display_tier,
             'is_basic': profile.is_basic,
-            'is_professional': profile.is_professional,
+            'is_plus': profile.is_plus,
             'is_premium': profile.is_premium,
             'can_initiate_consultation': profile.can_initiate_consultation,
             'can_post_content': profile.can_post_content,
@@ -380,6 +380,27 @@ class MessageViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get total unread message count across all conversations"""
+        count = Message.objects.filter(
+            conversation__participants=request.user,
+            is_read=False
+        ).exclude(sender=request.user).count()
+        return Response({'unread_count': count})
+    
+    @action(detail=False, methods=['get'])
+    def unread_conversations(self, request):
+        """Get conversations with unread messages"""
+        conversations = Conversation.objects.filter(
+            participants=request.user,
+            messages__is_read=False
+        ).exclude(
+            messages__sender=request.user
+        ).distinct()
+        serializer = ConversationSerializer(conversations, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
     def sent(self, request):
         """Get sent messages - returns user's messages across all conversations"""
         messages = Message.objects.filter(sender=request.user).order_by('-timestamp')
@@ -409,11 +430,28 @@ class MessageViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
-        """Mark message as read"""
+        """Mark message as read with timestamp"""
+        from django.utils import timezone
         message = self.get_object()
-        message.is_read = True
-        message.save()
-        return Response({'status': 'marked_read'})
+        if not message.is_read:
+            message.is_read = True
+            message.read_at = timezone.now()
+            message.save()
+        return Response({'status': 'marked_read', 'read_at': message.read_at})
+    
+    @action(detail=True, methods=['post'])
+    def mark_all_read(self, request, pk=None):
+        """Mark all messages in a conversation as read"""
+        conversation = self.get_object()
+        from django.utils import timezone
+        updated = Message.objects.filter(
+            conversation=conversation,
+            is_read=False
+        ).exclude(sender=request.user).update(
+            is_read=True,
+            read_at=timezone.now()
+        )
+        return Response({'status': 'marked_read', 'count': updated})
 
 
 # =============================================================================
@@ -471,6 +509,29 @@ class ArticleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         professional = get_object_or_404(Professional, user=self.request.user)
         serializer.save(author=professional)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Increment view count on retrieve"""
+        instance = self.get_object()
+        instance.views += 1
+        instance.save(update_fields=['views'])
+        return super().retrieve(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'])
+    def my_drafts(self, request):
+        """Get unpublished articles for the current author"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            professional = Professional.objects.get(user=request.user)
+            articles = Article.objects.filter(
+                author=professional,
+                is_published=False
+            ).order_by('-updated_at')
+            serializer = ArticleListSerializer(articles, many=True)
+            return Response(serializer.data)
+        except Professional.DoesNotExist:
+            return Response({'error': 'You are not a professional'}, status=status.HTTP_403_FORBIDDEN)
     
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
@@ -575,7 +636,62 @@ class ResearchViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         professional = get_object_or_404(Professional, user=self.request.user)
-        serializer.save(author=professional)
+        # Set initial status based on user tier - Premium users can publish directly
+        user_profile = professional.user.userprofile
+        initial_status = 'published' if user_profile.is_premium else 'draft'
+        serializer.save(author=professional, status=initial_status)
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Increment view count on retrieve"""
+        instance = self.get_object()
+        instance.views += 1
+        instance.save(update_fields=['views'])
+        return super().retrieve(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'])
+    def my_drafts(self, request):
+        """Get unpublished research for the current author"""
+        if not request.user.is_authenticated:
+            return Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        try:
+            professional = Professional.objects.get(user=request.user)
+            research = Research.objects.filter(
+                author=professional,
+                status__in=['draft', 'pending']
+            ).order_by('-updated_at')
+            serializer = ResearchListSerializer(research, many=True)
+            return Response(serializer.data)
+        except Professional.DoesNotExist:
+            return Response({'error': 'You are not a professional'}, status=status.HTTP_403_FORBIDDEN)
+    
+    @action(detail=True, methods=['post'])
+    def submit_for_review(self, request, pk=None):
+        """Submit research for review"""
+        research = self.get_object()
+        if research.status != 'draft':
+            return Response(
+                {'error': 'Only draft research can be submitted for review'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        research.status = 'pending'
+        research.save()
+        return Response({'status': 'submitted', 'message': 'Research submitted for review'})
+    
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """Publish research (Premium users only or admin)"""
+        research = self.get_object()
+        user_profile = request.user.userprofile
+        
+        if not (user_profile.is_premium or request.user.is_staff):
+            return Response(
+                {'error': 'Only Premium users or admins can publish research directly'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        research.status = 'published'
+        research.save()
+        return Response({'status': 'published', 'message': 'Research published successfully'})
     
     @action(detail=True, methods=['post'])
     def like(self, request, pk=None):
@@ -746,19 +862,35 @@ class NotificationViewSet(viewsets.ModelViewSet):
         serializer = NotificationSerializer(notifications, many=True)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        """Get count of unread notifications"""
+        count = Notification.objects.filter(
+            user=request.user,
+            is_read=False
+        ).count()
+        return Response({'unread_count': count})
+    
     @action(detail=False, methods=['post'])
     def mark_all_read(self, request):
         """Mark all notifications as read"""
-        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        from django.utils import timezone
+        Notification.objects.filter(user=request.user, is_read=False).update(
+            is_read=True,
+            read_at=timezone.now()
+        )
         return Response({'status': 'all_marked_read'})
     
     @action(detail=True, methods=['post'])
     def mark_read(self, request, pk=None):
-        """Mark a notification as read"""
+        """Mark a notification as read with timestamp"""
+        from django.utils import timezone
         notification = self.get_object()
-        notification.is_read = True
-        notification.save()
-        return Response({'status': 'marked_read'})
+        if not notification.is_read:
+            notification.is_read = True
+            notification.read_at = timezone.now()
+            notification.save()
+        return Response({'status': 'marked_read', 'read_at': notification.read_at})
 
 
 # =============================================================================
@@ -798,6 +930,52 @@ class JobViewSet(viewsets.ModelViewSet):
         jobs = Job.objects.filter(client=request.user)
         serializer = JobSerializer(jobs, many=True)
         return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def accept_proposal(self, request, pk=None):
+        """Accept a professional's proposal for a job"""
+        job = self.get_object()
+        if job.client != request.user:
+            return Response(
+                {'error': 'Only the job client can accept proposals'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        proposal_id = request.data.get('proposal_id')
+        if not proposal_id:
+            return Response({'error': 'proposal_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Update job status and assign professional
+        job.professional_id = proposal_id
+        job.status = 'in_progress'
+        job.save()
+        return Response({'status': 'accepted', 'message': 'Proposal accepted'})
+    
+    @action(detail=True, methods=['post'])
+    def reject_proposal(self, request, pk=None):
+        """Reject a professional's proposal for a job"""
+        job = self.get_object()
+        if job.client != request.user:
+            return Response(
+                {'error': 'Only the job client can reject proposals'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        proposal_id = request.data.get('proposal_id')
+        reason = request.data.get('reason', '')
+        # Here you would create a rejection record
+        return Response({'status': 'rejected', 'reason': reason})
+    
+    @action(detail=True, methods=['get'])
+    def proposals(self, request, pk=None):
+        """Get all proposals for a job"""
+        job = self.get_object()
+        if job.client != request.user and not request.user.is_staff:
+            return Response(
+                {'error': 'Permission denied'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # Assuming there's a JobProposal model or similar
+        # This is a placeholder
+        return Response({'proposals': [], 'message': 'Proposals endpoint - implement JobProposal model'})
 
 
 class ExternalJobViewSet(viewsets.ModelViewSet):
@@ -879,6 +1057,57 @@ class ConsultationViewSet(viewsets.ModelViewSet):
             serializer = ConsultationSerializer(consultations, many=True)
             return Response(serializer.data)
         return Response([])
+    
+    @action(detail=False, methods=['post'])
+    def message_expert(self, request):
+        """Start a direct message conversation with an expert"""
+        expert_id = request.data.get('expert_id')
+        message = request.data.get('message')
+        
+        if not expert_id:
+            return Response({'error': 'expert_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not message:
+            return Response({'error': 'message required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            expert = Professional.objects.get(id=expert_id)
+        except Professional.DoesNotExist:
+            return Response({'error': 'Expert not found'}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Check if user can initiate consultation with this expert
+        user_profile = request.user.userprofile
+        if not user_profile.can_initiate_consultation:
+            return Response(
+                {'error': 'Only Plus and Premium users can message experts directly. Please upgrade your account.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Find or create conversation between these users
+        conversation = Conversation.objects.filter(
+            participants=request.user
+        ).filter(
+            participants=expert.user
+        ).first()
+        
+        if not conversation:
+            conversation = Conversation.objects.create(
+                subject=f'Consultation inquiry with {expert.user.username}',
+                created_by=request.user
+            )
+            conversation.participants.add(request.user, expert.user)
+        
+        # Create the message
+        Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            content=message
+        )
+        
+        return Response({
+            'status': 'message_sent',
+            'conversation_id': conversation.id,
+            'message': 'Your message has been sent to the expert'
+        })
 
 
 class ConsultationTaskViewSet(viewsets.ModelViewSet):
@@ -1148,6 +1377,31 @@ class FeedbackViewSet(viewsets.ModelViewSet):
             serializer.save(user=self.request.user)
         else:
             serializer.save()
+
+
+class SiteSettingsViewSet(viewsets.ModelViewSet):
+    """ViewSet for SiteSettings model"""
+    queryset = SiteSettings.objects.all()
+    serializer_class = SiteSettingsSerializer
+    permission_classes = [IsAdminUser]
+    
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAdminUser()]
+    
+    @action(detail=False, methods=['get'])
+    def by_key(self, request):
+        """Get a setting by key"""
+        key = request.query_params.get('key')
+        if not key:
+            return Response({'error': 'key parameter required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            setting = SiteSettings.objects.get(key=key)
+            serializer = self.get_serializer(setting)
+            return Response(serializer.data)
+        except SiteSettings.DoesNotExist:
+            return Response({'value': None})
 
 
 # =============================================================================

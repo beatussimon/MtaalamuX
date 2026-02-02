@@ -10,7 +10,7 @@ from .models import (
     ConsultationTask, ConsultationApplication, ConsultationMessage,
     Conversation, PaymentMethod, PaymentRecord, DigitalItem,
     MerchItem, Purchase, VerificationRequest, TopExpert,
-    FeaturedContent, UserTier, VerificationLevel
+    FeaturedContent, UserTier, VerificationLevel, SiteSettings
 )
 
 
@@ -53,7 +53,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     """Serializer for UserProfile model"""
     user = UserSerializer(read_only=True)
     is_basic = serializers.BooleanField(read_only=True)
-    is_professional = serializers.BooleanField(read_only=True)
+    is_plus = serializers.BooleanField(read_only=True)
     is_premium = serializers.BooleanField(read_only=True)
     can_initiate_consultation = serializers.BooleanField(read_only=True)
     can_post_content = serializers.BooleanField(read_only=True)
@@ -250,6 +250,30 @@ class MessageCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ['content', 'file', 'image', 'parent']
+    
+    def validate_file(self, value):
+        """Validate file size against settings"""
+        from .models import SiteSettings
+        if value:
+            max_size = SiteSettings.get_message_file_size_limit()
+            if value.size > max_size:
+                max_size_mb = max_size / (1024 * 1024)
+                raise serializers.ValidationError(
+                    f'File size exceeds maximum allowed ({max_size_mb:.1f}MB)'
+                )
+        return value
+    
+    def validate_image(self, value):
+        """Validate image size against settings"""
+        from .models import SiteSettings
+        if value:
+            max_size = SiteSettings.get_max_image_size()
+            if value.size > max_size:
+                max_size_mb = max_size / (1024 * 1024)
+                raise serializers.ValidationError(
+                    f'Image size exceeds maximum allowed ({max_size_mb:.1f}MB)'
+                )
+        return value
 
 
 # =============================================================================
@@ -525,7 +549,8 @@ class ExternalJobListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = ExternalJob
-        fields = ['id', 'title', 'description', 'budget', 'job_type', 'category', 'location', 'apply_url', 'created_at']
+        fields = ['id', 'title', 'description', 'budget', 'job_type', 'category', 'location', 
+                  'apply_url', 'contact_email', 'contact_phone', 'provider_name', 'provider_url', 'created_at']
 
 
 # =============================================================================
@@ -659,7 +684,27 @@ class UpgradeRequestCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = UpgradeRequest
-        fields = ['upgrade_type', 'notes']
+        fields = ['upgrade_type', 'notes', 'payment_method', 'payment_reference', 
+                  'lawyer_confirmation_letter', 'supporting_documents']
+    
+    def validate(self, attrs):
+        upgrade_type = attrs.get('upgrade_type')
+        
+        # Premium upgrades require lawyer confirmation letter
+        if upgrade_type == 'premium':
+            if not attrs.get('lawyer_confirmation_letter'):
+                raise serializers.ValidationError({
+                    'lawyer_confirmation_letter': 'Lawyer confirmation letter is required for Premium tier upgrades'
+                })
+        
+        # Plus upgrades require payment
+        if upgrade_type == 'plus':
+            if not attrs.get('payment_method') or not attrs.get('payment_reference'):
+                raise serializers.ValidationError({
+                    'payment': 'Payment information is required for Plus tier upgrades'
+                })
+        
+        return attrs
 
 
 class VerificationRequestSerializer(serializers.ModelSerializer):
@@ -700,7 +745,16 @@ class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = '__all__'
-        read_only_fields = ['id', 'user', 'submitted_at']
+        read_only_fields = ['id', 'user', 'submitted_at', 'updated_at']
+
+
+class SiteSettingsSerializer(serializers.ModelSerializer):
+    """Serializer for SiteSettings model"""
+    
+    class Meta:
+        model = SiteSettings
+        fields = '__all__'
+        read_only_fields = ['id', 'updated_at']
 
 
 # =============================================================================
