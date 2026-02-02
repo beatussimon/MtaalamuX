@@ -194,7 +194,7 @@ class Command(BaseCommand):
     def create_users(self, count):
         """Create regular users with profiles"""
         users = []
-        tier_weights = [(UserTier.BASIC, 50), (UserTier.PROFESSIONAL, 30), (UserTier.PREMIUM, 20)]
+        tier_weights = [(UserTier.BASIC, 50), (UserTier.PLUS, 30), (UserTier.PREMIUM, 20)]
 
         for i in range(count):
             # Generate fake user data
@@ -262,7 +262,7 @@ class Command(BaseCommand):
                     last_name=last_name,
                 )
 
-                tier = UserTier.PROFESSIONAL if 'professional' in demo_username else UserTier.BASIC
+                tier = UserTier.PLUS if 'plus' in demo_username else UserTier.BASIC
                 UserProfile.objects.create(
                     user=demo_user,
                     tier=tier,

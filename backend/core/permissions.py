@@ -35,7 +35,7 @@ class IsProfessionalOrReadOnly(permissions.BasePermission):
                 request.user and 
                 request.user.is_authenticated and 
                 hasattr(request.user, 'profile') and 
-                request.user.profile.tier in [UserTier.PROFESSIONAL, UserTier.PREMIUM]
+                request.user.profile.tier in [UserTier.PLUS, UserTier.PREMIUM]
             )
         
         return False
@@ -144,7 +144,7 @@ class IsProfessionalUser(permissions.BasePermission):
         
         return (
             hasattr(request.user, 'profile') and
-            request.user.profile.tier in [UserTier.PROFESSIONAL, UserTier.PREMIUM]
+            request.user.profile.tier in [UserTier.PLUS, UserTier.PREMIUM]
         )
 
 

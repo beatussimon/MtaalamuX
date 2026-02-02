@@ -12,12 +12,12 @@ from django.contrib.contenttypes.models import ContentType
 class UserTier:
     """User tier constants"""
     BASIC = 'basic'
-    PROFESSIONAL = 'professional'
+    PLUS = 'plus'
     PREMIUM = 'premium'
 
     CHOICES = [
         (BASIC, 'Basic'),
-        (PROFESSIONAL, 'Professional'),
+        (PLUS, 'Plus'),
         (PREMIUM, 'Premium'),
     ]
 
@@ -68,7 +68,7 @@ class UserProfile(models.Model):
 
     @property
     def is_professional(self):
-        return self.tier == UserTier.PROFESSIONAL
+        return self.tier == UserTier.PLUS
 
     @property
     def is_premium(self):
@@ -77,7 +77,7 @@ class UserProfile(models.Model):
     @property
     def can_initiate_consultation(self):
         """Basic users cannot initiate consultations"""
-        return self.tier in [UserTier.PROFESSIONAL, UserTier.PREMIUM]
+        return self.tier in [UserTier.PLUS, UserTier.PREMIUM]
 
     @property
     def can_post_content(self):
@@ -94,8 +94,8 @@ class UserProfile(models.Model):
         """UI display name for tier"""
         if self.tier == UserTier.BASIC:
             return "Basic"
-        elif self.tier == UserTier.PROFESSIONAL:
-            return "Professional"
+        elif self.tier == UserTier.PLUS:
+            return "Plus"
         else:
             return "Premium"
 

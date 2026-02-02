@@ -234,3 +234,10 @@ LOGOUT_REDIRECT_URL = '/api/v1/auth/login/'
 CONTACT_EMAIL = os.getenv('CONTACT_EMAIL', 'support@mtaalamux.com')
 
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://mtx.today",
+    "https://api.mtx.today",
+]
