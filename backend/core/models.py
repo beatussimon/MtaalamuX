@@ -1,5 +1,6 @@
 """Core models for MtaalamuX platform"""
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
@@ -293,6 +294,15 @@ class Conversation(models.Model):
         null=True,
         related_name='created_conversations'
     )
+    
+    # Link to consultation for time-bound messaging
+    consultation = models.ForeignKey(
+        'Consultation',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='conversations'
+    )
 
     class Meta:
         verbose_name = 'Conversation'
@@ -301,6 +311,38 @@ class Conversation(models.Model):
 
     def __str__(self):
         return f"{self.subject} - {self.created_at}"
+
+    def get_other_participant(self, user):
+        """Get the other participant in a two-user conversation"""
+        return self.participants.exclude(id=user.id).first()
+
+    def can_send_messages(self):
+        """
+        Check if messages can be sent in this conversation.
+        Returns True only if linked consultation allows messaging.
+        """
+        if not self.consultation:
+            # No consultation linked - allow messaging for backward compatibility
+            return True
+        return self.consultation.can_send_messages()
+
+    def get_consultation_status(self):
+        """Get consultation status for frontend UI"""
+        if not self.consultation:
+            return {'has_consultation': False}
+        
+        from django.utils import timezone
+        now = timezone.now()
+        
+        return {
+            'has_consultation': True,
+            'status': self.consultation.status,
+            'is_active': self.consultation.is_active,
+            'is_within_time_bounds': self.consultation.is_within_time_bounds(),
+            'can_send_messages': self.can_send_messages(),
+            'start_time': self.consultation.start_time,
+            'end_time': self.consultation.end_time,
+        }
 
 
 class Message(models.Model):
@@ -669,11 +711,23 @@ class Consultation(models.Model):
         on_delete=models.CASCADE,
         related_name='consultations'
     )
+    availability = models.ForeignKey(
+        'AvailabilitySlot',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='consultations',
+        unique=True  # One slot → one consultation max
+    )
     title = models.CharField(max_length=200)
     description = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(default=60)  # Default 1 hour
+    
+    # Time-bound messaging fields
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
     
     # Payment tracking
     is_paid = models.BooleanField(default=False)
@@ -696,13 +750,57 @@ class Consultation(models.Model):
         verbose_name = 'Consultation'
         verbose_name_plural = 'Consultations'
         ordering = ['-created_at']
+        constraints = [
+            # Prevent overlapping bookings for same client with same expert
+            models.UniqueConstraint(
+                fields=['client', 'expert', 'start_time'],
+                name='unique_client_expert_consultation',
+                condition=Q(start_time__isnull=False)
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.client.username} - {self.expert.user.username}: {self.title}"
+
+    def save(self, *args, **kwargs):
+        """Derive start_time and end_time from availability if not set"""
+        if self.availability and not (self.start_time and self.end_time):
+            self.start_time = self.availability.start_time
+            self.end_time = self.availability.end_time
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.client.username} - {self.expert.user.username}: {self.title}"
 
     @property
     def is_active(self):
+        """Check if consultation is in active state (pending, accepted, in_progress)"""
         return self.status in ['pending', 'accepted', 'in_progress']
+
+    def is_within_time_bounds(self):
+        """
+        Check if current time is within consultation time bounds.
+        Returns True if:
+        - start_time is not set OR current time >= start_time
+        - end_time is not set OR current time <= end_time
+        """
+        from django.utils import timezone
+        now = timezone.now()
+        
+        if self.start_time and now < self.start_time:
+            return False
+        if self.end_time and now > self.end_time:
+            return False
+        return True
+
+    def can_send_messages(self):
+        """
+        Check if messages can be sent for this consultation.
+        Returns True only if:
+        - Consultation is active (pending, accepted, in_progress)
+        - Current time is within [start_time, end_time] bounds
+        """
+        return self.is_active and self.is_within_time_bounds()
 
 
 class ConsultationMessage(models.Model):
@@ -1398,5 +1496,65 @@ class SiteSettings(models.Model):
             return int(cls.objects.get(key='max_image_size').value)
         except (cls.DoesNotExist, ValueError):
             return default
+
+
+# =============================================================================
+# AVAILABILITY SLOTS (Expert Scheduling)
+# =============================================================================
+
+class AvailabilitySlot(models.Model):
+    """
+    Availability slots for experts to define their available timeframes.
+    Clients can book these slots for consultations.
+    """
+    expert = models.ForeignKey(
+        Professional,
+        on_delete=models.CASCADE,
+        related_name='availability_slots'
+    )
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    is_booked = models.BooleanField(default=False)
+    booked_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='booked_slots'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Availability Slot'
+        verbose_name_plural = 'Availability Slots'
+        ordering = ['start_time']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['expert', 'start_time', 'end_time'],
+                name='unique_expert_slot_time'
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.expert.user.username}: {self.start_time} - {self.end_time}"
+
+    @property
+    def is_available(self):
+        """Check if slot is available for booking"""
+        from django.utils import timezone
+        return not self.is_booked and self.start_time > timezone.now()
+
+    @property
+    def is_expired(self):
+        """Check if slot has expired"""
+        from django.utils import timezone
+        return self.end_time < timezone.now()
+
+    @property
+    def duration_minutes(self):
+        """Get duration in minutes"""
+        delta = self.end_time - self.start_time
+        return int(delta.total_seconds() / 60)
 
 

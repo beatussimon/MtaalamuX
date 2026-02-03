@@ -10,7 +10,7 @@ from .views import (
     ConsultationViewSet, ConsultationTaskViewSet, ConsultationApplicationViewSet,
     PaymentMethodViewSet, PaymentRecordViewSet, DigitalItemViewSet, MerchItemViewSet,
     PurchaseViewSet, VerificationRequestViewSet, TopExpertViewSet, FeaturedContentViewSet,
-    ActivityLogViewSet, SiteSettingsViewSet
+    ActivityLogViewSet, SiteSettingsViewSet, AvailabilitySlotViewSet, ConsultationStatusView
 )
 
 router = DefaultRouter()
@@ -35,6 +35,7 @@ router.register(r'research', ResearchViewSet, basename='research')
 router.register(r'consultations', ConsultationViewSet, basename='consultations')
 router.register(r'consultation-tasks', ConsultationTaskViewSet, basename='consultation-tasks')
 router.register(r'consultation-applications', ConsultationApplicationViewSet, basename='consultation-applications')
+router.register(r'availability-slots', AvailabilitySlotViewSet, basename='availability-slots')
 router.register(r'payment-methods', PaymentMethodViewSet, basename='payment-methods')
 router.register(r'payment-records', PaymentRecordViewSet, basename='payment-records')
 router.register(r'digital-items', DigitalItemViewSet, basename='digital-items')
@@ -50,4 +51,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('health/', HealthCheckView.as_view(), name='health-check'),
     path('homepage/', HomepageView.as_view(), name='homepage'),
+    path('consultations/status/', ConsultationStatusView.as_view(), name='consultation-status'),
 ]

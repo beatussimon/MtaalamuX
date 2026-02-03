@@ -10,7 +10,8 @@ from .models import (
     ConsultationTask, ConsultationApplication, ConsultationMessage,
     Conversation, PaymentMethod, PaymentRecord, DigitalItem,
     MerchItem, Purchase, VerificationRequest, TopExpert,
-    FeaturedContent, UserTier, VerificationLevel, SiteSettings
+    FeaturedContent, UserTier, VerificationLevel, SiteSettings,
+    AvailabilitySlot
 )
 
 
@@ -20,10 +21,23 @@ from .models import (
 
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model"""
+    verification_level = serializers.SerializerMethodField()
+    
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined']
-        read_only_fields = ['id', 'date_joined']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'verification_level']
+        read_only_fields = ['id', 'date_joined', 'verification_level']
+    
+    def get_verification_level(self, obj):
+        """Get verification level from UserProfile"""
+        try:
+            if hasattr(obj, 'userprofile'):
+                return obj.userprofile.verification_level
+            elif hasattr(obj, 'profile'):
+                return obj.profile.verification_level
+        except:
+            pass
+        return None
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
@@ -209,13 +223,15 @@ class ConversationSerializer(serializers.ModelSerializer):
     participant_ids = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, source='participants', write_only=True)
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
+    consultation_status = serializers.SerializerMethodField()
     
     class Meta:
         model = Conversation
         fields = [
             'id', 'participants', 'participant_ids', 'subject', 
             'consultation_type', 'status', 'created_at', 'updated_at',
-            'created_by', 'last_message', 'unread_count'
+            'created_by', 'last_message', 'unread_count', 'consultation',
+            'consultation_status'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'created_by']
     
@@ -233,6 +249,10 @@ class ConversationSerializer(serializers.ModelSerializer):
                 is_read=False
             ).count()
         return 0
+    
+    def get_consultation_status(self, obj):
+        """Get consultation status info for frontend"""
+        return obj.get_consultation_status()
 
 
 class MessageSerializer(serializers.ModelSerializer):
@@ -246,11 +266,26 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class MessageCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating messages"""
+    """Serializer for creating messages with time-bound consultation validation"""
     
     class Meta:
         model = Message
         fields = ['content', 'file', 'image', 'parent']
+    
+    def validate(self, attrs):
+        """Validate that the conversation allows messaging"""
+        # Get conversation from context
+        conversation = self.context.get('conversation')
+        if not conversation:
+            raise serializers.ValidationError("Conversation not provided")
+        
+        # Check if conversation allows messaging
+        if not conversation.can_send_messages():
+            raise serializers.ValidationError(
+                "Consultation has ended. Please rebook to continue chatting."
+            )
+        
+        return attrs
     
     def validate_file(self, value):
         """Validate file size against settings"""
@@ -275,6 +310,21 @@ class MessageCreateSerializer(serializers.ModelSerializer):
                     f'Image size exceeds maximum allowed ({max_size_mb:.1f}MB)'
                 )
         return value
+
+
+class MessageInitiateSerializer(serializers.Serializer):
+    """Serializer for initiating a conversation with an expert"""
+    expert_id = serializers.IntegerField(required=True)
+
+
+class MessageInitiateResponseSerializer(serializers.Serializer):
+    """Response serializer for conversation initiation"""
+    conversation_id = serializers.IntegerField()
+    consultation_id = serializers.IntegerField(allow_null=True)
+    consultation_status = serializers.CharField()
+    consultation_end_time = serializers.DateTimeField(allow_null=True)
+    can_send_messages = serializers.BooleanField()
+    message = serializers.CharField()
 
 
 # =============================================================================
@@ -701,11 +751,96 @@ class ConsultationSerializer(serializers.ModelSerializer):
     client = UserSerializer(read_only=True)
     expert = ProfessionalSerializer(read_only=True)
     expert_id = serializers.PrimaryKeyRelatedField(queryset=Professional.objects.all(), source='expert', write_only=True)
+    availability_id = serializers.PrimaryKeyRelatedField(
+        queryset=AvailabilitySlot.objects.all(), 
+        source='availability', 
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = Consultation
-        fields = '__all__'
-        read_only_fields = ['id', 'client', 'expert', 'created_at', 'updated_at']
+        fields = [
+            'id', 'client', 'expert', 'expert_id', 'availability', 'availability_id',
+            'title', 'description', 'status', 'price', 'duration_minutes',
+            'start_time', 'end_time', 'is_paid', 'payment_verified',
+            'scheduled_at', 'completed_at', 'meeting_link',
+            'client_rating', 'client_feedback',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'client', 'start_time', 'end_time', 'created_at', 'updated_at']
+    
+    def validate(self, attrs):
+        """Validate consultation booking according to domain rules"""
+        user = self.context['request'].user if self.context.get('request') else None
+        
+        # Get expert from validated data
+        expert = attrs.get('expert')
+        if not expert:
+            raise serializers.ValidationError({
+                'expert_id': 'Expert is required'
+            })
+        
+        # RULE: User CANNOT book themselves
+        if user and expert.user.id == user.id:
+            raise serializers.ValidationError({
+                'expert_id': 'You cannot book a consultation with yourself'
+            })
+        
+        # Check availability slot if provided
+        availability = attrs.get('availability')
+        if availability:
+            # Slot must belong to the expert
+            if availability.expert.id != expert.id:
+                raise serializers.ValidationError({
+                    'availability': 'Availability slot must belong to the selected expert'
+                })
+            
+            # Slot must not be booked already
+            if availability.is_booked:
+                raise serializers.ValidationError({
+                    'availability': 'This time slot is already booked'
+                })
+            
+            # Slot must not be in the past
+            from django.utils import timezone
+            if availability.start_time <= timezone.now():
+                raise serializers.ValidationError({
+                    'availability': 'Cannot book a slot that has already started or ended'
+                })
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """Create consultation and update availability slot"""
+        user = self.context['request'].user
+        availability = validated_data.get('availability')
+        
+        # Create consultation
+        consultation = Consultation.objects.create(
+            client=user,
+            expert=validated_data['expert'],
+            availability=availability,
+            title=validated_data.get('title', f'Consultation with {validated_data["expert"].user.username}'),
+            description=validated_data.get('description', 'Consultation booked via availability slot.'),
+            status='pending',
+        )
+        
+        # If availability was provided, mark it as booked
+        if availability:
+            from django.utils import timezone
+            availability.is_booked = True
+            availability.booked_by = user
+            availability.consultation = consultation
+            availability.save()
+            
+            # Derive times from availability
+            consultation.start_time = availability.start_time
+            consultation.end_time = availability.end_time
+            consultation.save()
+        
+        return consultation
 
 
 class ConsultationMessageSerializer(serializers.ModelSerializer):
@@ -944,3 +1079,181 @@ class FeaturedContentSerializer(serializers.ModelSerializer):
         model = FeaturedContent
         fields = '__all__'
         read_only_fields = ['id', 'featured_at']
+
+
+# =============================================================================
+# AVAILABILITY SLOT SERIALIZERS
+# =============================================================================
+
+class AvailabilitySlotSerializer(serializers.ModelSerializer):
+    """Serializer for AvailabilitySlot model"""
+    expert_name = serializers.SerializerMethodField()
+    duration_minutes = serializers.IntegerField(read_only=True)
+    is_available = serializers.BooleanField(read_only=True)
+    expert_id = serializers.IntegerField(source='expert.id', read_only=True)
+    
+    class Meta:
+        model = AvailabilitySlot
+        fields = [
+            'id', 'expert', 'expert_id', 'expert_name', 
+            'start_time', 'end_time',
+            'is_booked', 'is_available', 'duration_minutes',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'is_booked', 'created_at', 'updated_at']
+    
+    def get_expert_name(self, obj):
+        return obj.expert.user.username
+
+
+class AvailabilitySlotCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating availability slots"""
+    
+    class Meta:
+        model = AvailabilitySlot
+        fields = ['id', 'expert', 'start_time', 'end_time', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+    
+    def validate(self, attrs):
+        """Validate that end_time is after start_time"""
+        if attrs['end_time'] <= attrs['start_time']:
+            raise serializers.ValidationError({
+                'end_time': 'End time must be after start time.'
+            })
+        return attrs
+
+
+class BookingSerializer(serializers.Serializer):
+    """Serializer for booking a slot"""
+    slot_id = serializers.IntegerField(required=True)
+
+
+class BookingResponseSerializer(serializers.Serializer):
+    """Response serializer for booking confirmation"""
+    status = serializers.CharField()
+    message = serializers.CharField()
+    consultation_id = serializers.IntegerField(allow_null=True)
+    consultation_status = serializers.CharField(allow_null=True)
+
+
+class ConsultationStatusSerializer(serializers.Serializer):
+    """Serializer for consultation status response"""
+    state = serializers.CharField()  # "none", "scheduled", "active", "expired"
+    consultation_id = serializers.IntegerField(allow_null=True)
+    start_time = serializers.DateTimeField(allow_null=True)
+    end_time = serializers.DateTimeField(allow_null=True)
+    expert_id = serializers.IntegerField(allow_null=True)
+    expert_name = serializers.CharField(allow_null=True)
+    message = serializers.CharField(allow_null=True)
+
+
+class ConsultationCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating consultations with proper domain validation.
+    
+    DOMAIN RULES:
+    - User CANNOT book themselves
+    - Only expert users can define availability
+    - Consultation MUST reference an availability slot
+    - One slot → one consultation max
+    - No overlapping bookings possible
+    """
+    expert_id = serializers.IntegerField(write_only=True)
+    availability_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    
+    class Meta:
+        model = Consultation
+        fields = [
+            'expert_id', 'availability_id', 
+            'title', 'description', 'price', 'duration_minutes'
+        ]
+    
+    def validate(self, attrs):
+        """Validate consultation booking according to domain rules"""
+        user = self.context['request'].user if self.context.get('request') else None
+        
+        if not user:
+            raise serializers.ValidationError('Authentication required')
+        
+        # Get expert ID from validated data
+        expert_id = attrs.get('expert_id')
+        
+        try:
+            expert = Professional.objects.get(id=expert_id)
+        except Professional.DoesNotExist:
+            raise serializers.ValidationError({
+                'expert_id': 'Expert not found'
+            })
+        
+        # RULE: User CANNOT book themselves
+        if expert.user.id == user.id:
+            raise serializers.ValidationError({
+                'expert_id': 'You cannot book a consultation with yourself'
+            })
+        
+        # Check availability slot if provided
+        availability_id = attrs.get('availability_id')
+        if availability_id:
+            try:
+                slot = AvailabilitySlot.objects.get(id=availability_id)
+                
+                # Slot must belong to the expert
+                if slot.expert.id != expert.id:
+                    raise serializers.ValidationError({
+                        'availability_id': 'Availability slot must belong to the selected expert'
+                    })
+                
+                # Slot must not be booked already
+                if slot.is_booked:
+                    raise serializers.ValidationError({
+                        'availability_id': 'This time slot is already booked'
+                    })
+                
+                # Slot must not be in the past
+                from django.utils import timezone
+                if slot.start_time <= timezone.now():
+                    raise serializers.ValidationError({
+                        'availability_id': 'Cannot book a slot that has already started or ended'
+                    })
+                
+                attrs['availability'] = slot
+            except AvailabilitySlot.DoesNotExist:
+                raise serializers.ValidationError({
+                    'availability_id': 'Availability slot not found'
+                })
+        
+        attrs['expert'] = expert
+        attrs['user'] = user
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """Create consultation and update availability slot"""
+        user = validated_data['user']
+        expert = validated_data['expert']
+        availability = validated_data.get('availability')
+        
+        # Create consultation
+        consultation = Consultation.objects.create(
+            client=user,
+            expert=expert,
+            availability=availability,
+            title=validated_data.get('title', f'Consultation with {expert.user.username}'),
+            description=validated_data.get('description', 'Consultation booked via availability slot.'),
+            status='pending',
+        )
+        
+        # If availability was provided, mark it as booked
+        if availability:
+            from django.utils import timezone
+            availability.is_booked = True
+            availability.booked_by = user
+            availability.consultation = consultation
+            availability.save()
+            
+            # Derive times from availability
+            consultation.start_time = availability.start_time
+            consultation.end_time = availability.end_time
+            consultation.save()
+        
+        return consultation

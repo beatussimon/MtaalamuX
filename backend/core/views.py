@@ -18,25 +18,27 @@ from .models import (
     ConsultationTask, ConsultationApplication, ConsultationMessage,
     Conversation, PaymentMethod, PaymentRecord, DigitalItem,
     MerchItem, Purchase, VerificationRequest, TopExpert,
-    FeaturedContent, UserTier, VerificationLevel, SiteSettings
+    FeaturedContent, UserTier, VerificationLevel, SiteSettings,
+    AvailabilitySlot
 )
 from .serializers import (
     UserSerializer, UserCreateSerializer, UserProfileSerializer,
     UserProfileUpdateSerializer, CategorySerializer, CategorySimpleSerializer,
     ProfessionalSerializer, ProfessionalListSerializer, PortfolioItemSerializer,
-    MessageSerializer, MessageCreateSerializer, ArticleSerializer,
-    ArticleListSerializer, ArticleCreateSerializer, ArticleDetailSerializer,
+    MessageSerializer, MessageCreateSerializer, MessageInitiateSerializer, MessageInitiateResponseSerializer,
+    ArticleSerializer, ArticleListSerializer, ArticleCreateSerializer, ArticleDetailSerializer,
     CommentSerializer, CommentCreateSerializer, ServiceReviewSerializer, ServiceReviewCreateSerializer,
     FavoriteSerializer, NotificationSerializer, JobSerializer, JobListSerializer,
     ExternalJobSerializer, ExternalJobListSerializer, UpgradeRequestSerializer,
     UpgradeRequestCreateSerializer, FAQSerializer, FeedbackSerializer,
     ResearchSerializer, ResearchListSerializer, ResearchCreateSerializer, ResearchDetailSerializer,
     ConsultationSerializer, ConsultationTaskSerializer, ConsultationApplicationSerializer,
-    ConversationSerializer, MessageCreateSerializer, PaymentMethodSerializer,
-    PaymentRecordSerializer, DigitalItemSerializer, MerchItemSerializer,
-    PurchaseSerializer, VerificationRequestSerializer, VerificationRequestCreateSerializer,
+    ConversationSerializer, PaymentMethodSerializer, PaymentRecordSerializer, DigitalItemSerializer,
+    MerchItemSerializer, PurchaseSerializer, VerificationRequestSerializer, VerificationRequestCreateSerializer,
     TopExpertSerializer, FeaturedContentSerializer, ConsultationMessageSerializer,
-    ActivityLogSerializer, SiteSettingsSerializer
+    ActivityLogSerializer, SiteSettingsSerializer,
+    AvailabilitySlotSerializer, AvailabilitySlotCreateSerializer, BookingSerializer,
+    BookingResponseSerializer, ConsultationStatusSerializer
 )
 from .permissions import (
     IsOwnerOrReadOnly, IsProfessionalOrReadOnly, CanUpgradeUser,
@@ -303,6 +305,41 @@ class ProfessionalViewSet(viewsets.ModelViewSet):
             logger.error(f"Error in portfolio endpoint: {str(e)}")
             # Return empty list instead of 500 error
             return Response([])
+    
+    @action(detail=True, methods=['get'])
+    def availability(self, request, pk=None):
+        """
+        Get available slots for this expert.
+        Query params:
+        - show_all: true/false (include past slots)
+        - include_booked: true/false (include booked slots)
+        """
+        try:
+            professional = get_object_or_404(Professional, pk=pk)
+            
+            queryset = AvailabilitySlot.objects.filter(expert=professional)
+            
+            # Filter by booked status
+            include_booked = request.query_params.get('include_booked', 'false')
+            if include_booked.lower() != 'true':
+                queryset = queryset.filter(is_booked=False)
+            
+            # Show all or only future slots
+            show_all = request.query_params.get('show_all', 'false')
+            if show_all.lower() != 'true':
+                from django.utils import timezone
+                queryset = queryset.filter(start_time__gte=timezone.now())
+            
+            # Order by start time
+            queryset = queryset.order_by('start_time')
+            
+            serializer = AvailabilitySlotSerializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in availability endpoint: {str(e)}")
+            return Response({'error': str(e)}, status=500)
 
 
 # =============================================================================
@@ -352,15 +389,15 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
 
 class MessageViewSet(viewsets.ModelViewSet):
-    """ViewSet for Message model"""
+    """ViewSet for Message model with time-bound consultation enforcement"""
     queryset = Message.objects.all()
     permission_classes = [IsAuthenticated]
-    # Throttling disabled - not configured in settings
-    # throttle_classes = [MessageThrottle]
     
     def get_serializer_class(self):
         if self.action == 'create':
             return MessageCreateSerializer
+        if self.action == 'initiate':
+            return MessageInitiateSerializer
         return MessageSerializer
     
     def get_queryset(self):
@@ -380,6 +417,12 @@ class MessageViewSet(viewsets.ModelViewSet):
             if not self._can_message_in_conversation(conversation):
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You do not have permission to send messages in this conversation.")
+            
+            # Check consultation time bounds (CRITICAL - backend enforcement)
+            if not conversation.can_send_messages():
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("Consultation has ended. Please rebook to continue chatting.")
+            
             serializer.save(conversation=conversation, sender=self.request.user)
         else:
             # For direct messages, create or get conversation
@@ -406,6 +449,146 @@ class MessageViewSet(viewsets.ModelViewSet):
                 serializer.save(conversation=conversation, sender=self.request.user)
             else:
                 serializer.save(sender=self.request.user)
+
+    @action(detail=False, methods=['post'])
+    def initiate(self, request):
+        """
+        Initiate a conversation with an expert.
+        
+        Creates or loads a conversation bound to an active consultation.
+        Returns 403 if no active consultation exists.
+        """
+        # Validate authentication
+        if not request.user or not request.user.is_authenticated:
+            return Response(
+                {'error': 'Authentication required'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # Get expert_id from request
+        expert_id = request.data.get('expert_id')
+        
+        if not expert_id:
+            return Response(
+                {'error': 'expert_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Validate expert_id is a valid integer
+        try:
+            expert_id = int(expert_id)
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'expert_id must be a valid integer'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Prevent user from messaging themselves
+        if request.user.id == expert_id:
+            return Response(
+                {'error': 'You cannot message yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get the professional (expert)
+        try:
+            professional = Professional.objects.select_related('user').get(id=expert_id)
+        except Professional.DoesNotExist:
+            return Response(
+                {'error': 'Expert not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Check if user can initiate messaging (tier check)
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+        except UserProfile.DoesNotExist:
+            # Create user profile if it doesn't exist
+            user_profile = UserProfile.objects.create(user=request.user)
+        
+        if user_profile.is_basic:
+            return Response(
+                {'error': 'You must be a Plus or Premium user to message experts'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Find an active consultation between the user and the expert
+        # Active means: status in ['pending', 'accepted', 'in_progress'] AND within time bounds
+        from django.utils import timezone
+        now = timezone.now()
+        
+        consultation = Consultation.objects.filter(
+            client=request.user,
+            expert=professional,
+            status__in=['pending', 'accepted', 'in_progress']
+        ).filter(
+            Q(start_time__isnull=True) | Q(start_time__lte=now)
+        ).filter(
+            Q(end_time__isnull=True) | Q(end_time__gte=now)
+        ).first()
+        
+        if not consultation:
+            # Return UX-safe response instead of raw 403 error
+            return Response(
+                {
+                    'status': 'NO_ACTIVE_CONSULTATION',
+                    'redirect_to': f'/experts/{expert_id}/consult',
+                    'message': 'Please book an available time to start messaging.',
+                    'consultation_id': None,
+                    'conversation_id': None,
+                    'can_send_messages': False,
+                },
+                status=status.HTTP_200_OK  # Return 200 with UX-safe response
+            )
+        
+        # Check if conversation already exists for this consultation
+        # Look for conversation with both user and expert as participants
+        conversation = Conversation.objects.filter(
+            consultation=consultation,
+            participants=request.user
+        ).first()
+        
+        is_new_conversation = False
+        
+        if not conversation:
+            # Create new conversation linked to consultation
+            try:
+                conversation = Conversation.objects.create(
+                    subject=f'Consultation: {consultation.title}',
+                    created_by=request.user,
+                    consultation=consultation
+                )
+                conversation.participants.add(request.user, professional.user)
+                is_new_conversation = True
+            except Exception as e:
+                # Log the error for debugging
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Error creating conversation: {str(e)}")
+                return Response(
+                    {'error': f'Failed to create conversation: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+        
+        # Get consultation status info
+        try:
+            consultation_status_info = conversation.get_consultation_status()
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error getting consultation status: {str(e)}")
+            consultation_status_info = {'has_consultation': True, 'can_send_messages': True}
+        
+        return Response({
+            'conversation_id': conversation.id,
+            'consultation_id': consultation.id,
+            'consultation_status': consultation.status,
+            'consultation_end_time': consultation.end_time,
+            'can_send_messages': conversation.can_send_messages(),
+            'status': 'created' if is_new_conversation else 'existing',
+            'message': 'Conversation initiated successfully.',
+            'consultation_status_info': consultation_status_info
+        })
 
     def _can_initiate_messaging_with(self, recipient):
         """Check if user can initiate messaging with recipient (expert)"""
@@ -1187,7 +1370,7 @@ class ExternalJobViewSet(viewsets.ModelViewSet):
 # =============================================================================
 
 class ConsultationViewSet(viewsets.ModelViewSet):
-    """ViewSet for Consultation model"""
+    """ViewSet for Consultation model with proper domain validation"""
     queryset = Consultation.objects.all()
     serializer_class = ConsultationSerializer
     permission_classes = [IsAuthenticated, CanInitiateConsultation]
@@ -1199,10 +1382,104 @@ class ConsultationViewSet(viewsets.ModelViewSet):
             Q(expert__user=self.request.user)
         ).distinct()
     
+    def get_serializer_class(self):
+        if self.action == 'create':
+            from .serializers import ConsultationCreateSerializer
+            return ConsultationCreateSerializer
+        return ConsultationSerializer
+    
     def perform_create(self, serializer):
-        expert_id = serializer.validated_data.get('expert').id
-        expert = get_object_or_404(Professional, id=expert_id)
-        serializer.save(client=self.request.user, expert=expert)
+        expert = serializer.validated_data.get('expert')
+        availability = serializer.validated_data.get('availability')
+        
+        # Create consultation
+        consultation = serializer.save(
+            client=self.request.user,
+            expert=expert,
+            status='pending'
+        )
+        
+        # If availability was provided, update the slot
+        if availability:
+            from django.utils import timezone
+            availability.is_booked = True
+            availability.booked_by = self.request.user
+            availability.consultation = consultation
+            availability.save()
+            
+            # Update consultation times
+            consultation.start_time = availability.start_time
+            consultation.end_time = availability.end_time
+            consultation.save()
+    
+    def create(self, request, *args, **kwargs):
+        """Create consultation with domain validation"""
+        # RULE: User CANNOT book themselves
+        if request.user.id == int(request.data.get('expert_id', 0)):
+            return Response(
+                {'error': 'You cannot book a consultation with yourself'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check availability slot if provided
+        availability_id = request.data.get('availability_id')
+        if availability_id:
+            try:
+                slot = AvailabilitySlot.objects.get(id=availability_id)
+                
+                # Slot must belong to the expert
+                if slot.expert.id != int(request.data.get('expert_id', 0)):
+                    return Response(
+                        {'error': 'Availability slot must belong to the selected expert'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Slot must not be booked already
+                if slot.is_booked:
+                    return Response(
+                        {'error': 'This time slot is already booked'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                
+                # Slot must not be in the past
+                from django.utils import timezone
+                if slot.start_time <= timezone.now():
+                    return Response(
+                        {'error': 'Cannot book a slot that has already started or ended'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            except AvailabilitySlot.DoesNotExist:
+                return Response(
+                    {'error': 'Availability slot not found'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+        
+        return super().create(request, *args, **kwargs)
+    
+    @action(detail=False, methods=['get'])
+    def my_consultations(self, request):
+        """Get consultations for current user"""
+        consultations = Consultation.objects.filter(
+            Q(client=request.user) | Q(expert__user=request.user)
+        )
+        serializer = ConsultationSerializer(consultations, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def as_client(self, request):
+        """Get consultations where user is client"""
+        consultations = Consultation.objects.filter(client=request.user)
+        serializer = ConsultationSerializer(consultations, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def as_expert(self, request):
+        """Get consultations where user is expert"""
+        if hasattr(request.user, 'professional'):
+            consultations = Consultation.objects.filter(expert=request.user.professional)
+            serializer = ConsultationSerializer(consultations, many=True)
+            return Response(serializer.data)
+        return Response([])
     
     @action(detail=False, methods=['get'])
     def my_consultations(self, request):
@@ -1737,3 +2014,198 @@ class HomepageView(views.APIView):
                 },
                 'error': 'Failed to load homepage data'
             }, status=500)
+
+
+# =============================================================================
+# AVAILABILITY SLOT VIEWS
+# =============================================================================
+
+class AvailabilitySlotViewSet(viewsets.ModelViewSet):
+    """ViewSet for AvailabilitySlot model"""
+    queryset = AvailabilitySlot.objects.all()
+    serializer_class = AvailabilitySlotSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        queryset = AvailabilitySlot.objects.all()
+        
+        # Filter by expert
+        expert_id = self.request.query_params.get('expert_id')
+        if expert_id:
+            queryset = queryset.filter(expert_id=expert_id)
+        
+        # Filter by booked status
+        is_booked = self.request.query_params.get('is_booked')
+        if is_booked is not None:
+            queryset = queryset.filter(is_booked=is_booked.lower() == 'true')
+        
+        # Only show future slots by default
+        show_all = self.request.query_params.get('show_all')
+        if not show_all or show_all.lower() != 'true':
+            queryset = queryset.filter(start_time__gte=timezone.now())
+        
+        return queryset.order_by('start_time')
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return AvailabilitySlotCreateSerializer
+        return AvailabilitySlotSerializer
+    
+    def get_permissions(self):
+        # Experts can manage their own slots
+        if self.action in ['list', 'retrieve']:
+            return [AllowAny()]
+        return [IsAuthenticated()]
+    
+    @action(detail=False, methods=['get'])
+    def available(self, request):
+        """Get available (unbooked) slots for an expert"""
+        expert_id = request.query_params.get('expert_id')
+        if not expert_id:
+            return Response({'error': 'expert_id is required'}, status=400)
+        
+        slots = AvailabilitySlot.objects.filter(
+            expert_id=expert_id,
+            is_booked=False,
+            start_time__gte=timezone.now()
+        ).order_by('start_time')
+        
+        serializer = AvailabilitySlotSerializer(slots, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def book(self, request):
+        """Book an available slot"""
+        slot_id = request.data.get('slot_id')
+        if not slot_id:
+            return Response({'error': 'slot_id is required'}, status=400)
+        
+        try:
+            slot = AvailabilitySlot.objects.get(id=slot_id)
+        except AvailabilitySlot.DoesNotExist:
+            return Response({'error': 'Slot not found'}, status=404)
+        
+        if slot.is_booked:
+            return Response({'error': 'This slot is already booked'}, status=400)
+        
+        if slot.start_time <= timezone.now():
+            return Response({'error': 'Cannot book a slot that has already started'}, status=400)
+        
+        # Book the slot
+        slot.is_booked = True
+        slot.booked_by = request.user
+        slot.save()
+        
+        # Create a consultation for this booking
+        consultation = Consultation.objects.create(
+            client=request.user,
+            expert=slot.expert,
+            title=f'Consultation with {slot.expert.user.username}',
+            description='Consultation booked via availability slot.',
+            status='accepted',
+            start_time=slot.start_time,
+            end_time=slot.end_time,
+            scheduled_at=slot.start_time,
+        )
+        
+        # Link the consultation to the slot
+        slot.consultation = consultation
+        slot.save()
+        
+        return Response({
+            'status': 'success',
+            'message': 'Slot booked successfully',
+            'consultation_id': consultation.id,
+            'slot': AvailabilitySlotSerializer(slot).data
+        })
+
+
+class ConsultationStatusView(views.APIView):
+    """
+    Get consultation status for a user with a specific expert.
+    Returns state: "none" | "scheduled" | "active" | "expired"
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        expert_id = request.query_params.get('expert_id')
+        if not expert_id:
+            return Response({'error': 'expert_id is required'}, status=400)
+        
+        try:
+            expert_id = int(expert_id)
+        except (ValueError, TypeError):
+            return Response({'error': 'expert_id must be a valid integer'}, status=400)
+        
+        try:
+            professional = Professional.objects.get(id=expert_id)
+        except Professional.DoesNotExist:
+            return Response({'error': 'Expert not found'}, status=404)
+        
+        now = timezone.now()
+        
+        # Check for active consultation (within time bounds)
+        consultation = Consultation.objects.filter(
+            client=request.user,
+            expert=professional,
+            status__in=['pending', 'accepted', 'in_progress']
+        ).filter(
+            Q(start_time__isnull=True) | Q(start_time__lte=now)
+        ).filter(
+            Q(end_time__isnull=True) | Q(end_time__gte=now)
+        ).first()
+        
+        if consultation:
+            if consultation.start_time and now < consultation.start_time:
+                # Scheduled but not yet started
+                return Response({
+                    'state': 'scheduled',
+                    'consultation_id': consultation.id,
+                    'start_time': consultation.start_time,
+                    'end_time': consultation.end_time,
+                    'expert_id': expert_id,
+                    'expert_name': professional.user.username,
+                    'message': f'Your consultation starts at {consultation.start_time.strftime("%H:%M")}'
+                })
+            else:
+                # Active and within time bounds
+                return Response({
+                    'state': 'active',
+                    'consultation_id': consultation.id,
+                    'start_time': consultation.start_time,
+                    'end_time': consultation.end_time,
+                    'expert_id': expert_id,
+                    'expert_name': professional.user.username,
+                    'message': 'Your consultation is active'
+                })
+        
+        # Check for expired consultation (existed but time has passed)
+        expired = Consultation.objects.filter(
+            client=request.user,
+            expert=professional,
+            status__in=['pending', 'accepted', 'in_progress']
+        ).filter(
+            end_time__lt=now
+        ).first()
+        
+        if expired:
+            return Response({
+                'state': 'expired',
+                'consultation_id': expired.id,
+                'start_time': expired.start_time,
+                'end_time': expired.end_time,
+                'expert_id': expert_id,
+                'expert_name': professional.user.username,
+                'message': 'Your consultation has ended. Please reschedule to continue messaging.'
+            })
+        
+        # No consultation found
+        return Response({
+            'state': 'none',
+            'consultation_id': None,
+            'start_time': None,
+            'end_time': None,
+            'expert_id': expert_id,
+            'expert_name': professional.user.username,
+            'message': 'No active consultation. Please book a time to start messaging.'
+        })
